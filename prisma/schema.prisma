@@ -33,6 +33,10 @@ model Cohort {
   year        Int      @default(2026)   // 年度（例: 2026）
   round       Int      @default(1)      // 選考回数（例: 1）
   seqCounter  Int      @default(0)      // 発番済み連番（自動更新）
+  // 学校・学科別受付設定
+  schoolKey   String?                   // null=全校共通, 値=特定校のみ（例: "chuo-seminar"）
+  acceptStart DateTime?                 // 受付開始日時
+  acceptEnd   DateTime?                 // 受付終了日時
 
   // 入学手続きデフォルト設定
   defaultTuitionPlan     String?  // 全額 / 分割（2期）

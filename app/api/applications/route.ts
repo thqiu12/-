@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateApplicationNo, buildApplicationNo } from "@/lib/utils";
-import { exec } from "child_process";
 import { getSession, isAdmin, checkRateLimit } from "@/lib/auth";
-import nodemailer from "nodemailer";
 
 // 学生へ出願番号確認メール送信
 async function sendStudentConfirmation(application: {
@@ -137,34 +135,42 @@ async function sendAdminNotification(application: {
 }) {
   const adminEmail = process.env.ADMIN_EMAIL || "xueweixuan@chinichi.com";
   const subject = `【新規出願】${application.applicationNo}　${application.lastName}${application.firstName}様`;
-  const body = `## 新規出願のお知らせ
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://20.112.84.17:3000";
+  const body = `${application.lastName} ${application.firstName} 様より新規出願を受け付けました。
 
-以下の出願を受け付けました。
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+申請番号：${application.applicationNo}
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-| 項目 | 内容 |
-|------|------|
-| 申請番号 | ${application.applicationNo} |
-| 氏名 | ${application.lastName} ${application.firstName} |
-| メールアドレス | ${application.email} |
-| 志望校 | ${application.schoolName} |
-| 志望学科 | ${application.department} |
-| 国籍 | ${application.nationality} |
-| 日本語レベル | ${application.japaneseLevel} |
-| 入学希望 | ${application.enrollmentYear}年${application.enrollmentMonth}月 |
+氏名：${application.lastName} ${application.firstName}
+メール：${application.email}
+志望校：${application.schoolName}
+志望学科：${application.department}
+国籍：${application.nationality}
+日本語レベル：${application.japaneseLevel}
+入学希望：${application.enrollmentYear}年${application.enrollmentMonth}月
 
 管理画面で詳細をご確認ください：
-http://20.112.84.17:3000/admin
+${baseUrl}/admin
 
 ---
 このメールは出願システムより自動送信されました。`;
 
-  return new Promise<void>((resolve) => {
-    const cmd = `gsk vm_email send ${adminEmail} -s "${subject.replace(/"/g, '\\"')}" -b "${body.replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
-    exec(cmd, { timeout: 30000 }, (err) => {
-      if (err) console.error("管理者メール送信エラー:", err.message);
-      resolve();
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM || "出願システム <onboarding@resend.dev>";
+    if (!apiKey) throw new Error("RESEND_API_KEY not set");
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: adminEmail, subject, text: body }),
     });
-  });
+    const data = await res.json() as { id?: string; message?: string };
+    if (!res.ok) throw new Error(data.message || "Resend API error");
+    console.log(`管理者メール送信完了: ${adminEmail} id=${data.id}`);
+  } catch (err) {
+    console.error("管理者メール送信エラー:", err);
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -349,10 +355,35 @@ export async function POST(request: NextRequest) {
         lastSchoolName: body.lastSchoolName,
         lastSchoolCountry: body.lastSchoolCountry,
         lastSchoolGraduate: body.lastSchoolGraduate,
+        priorAttendanceRate: body.priorAttendanceRate || null,
         workExperience: body.workExperience || null,
         examMode: body.examMode || "一般",
         referrerName: body.referrerName || null,
         referrerType: body.referrerType || null,
+        // 第一志望を applicationSchools に記録
+        applicationSchools: {
+          create: [
+            {
+              priority: 1,
+              schoolName: body.schoolName,
+              department: body.department,
+              course: body.course || null,
+              enrollmentYear: body.enrollmentYear,
+              enrollmentMonth: body.enrollmentMonth,
+            },
+            // 並願校
+            ...((body.additionalSchools ?? []) as Array<{
+              schoolName: string; department: string; course?: string;
+            }>).map((s, idx) => ({
+              priority: idx + 2,
+              schoolName: s.schoolName,
+              department: s.department,
+              course: s.course || null,
+              enrollmentYear: body.enrollmentYear,
+              enrollmentMonth: body.enrollmentMonth,
+            })),
+          ],
+        },
       },
     });
 

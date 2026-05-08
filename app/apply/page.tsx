@@ -155,7 +155,7 @@ interface FormData {
   // 並願（追加志望校）
   additionalSchools: { schoolId: string; schoolName: string; department: string; course: string; }[];
   enrollmentYear: string; enrollmentMonth: string; applicationReason: string;
-  lastSchoolName: string; lastSchoolCountry: string; lastSchoolGraduate: string; workExperience: string;
+  lastSchoolName: string; lastSchoolCountry: string; lastSchoolGraduate: string; priorAttendanceRate: string; workExperience: string;
   examMode: string; referrerName: string; referrerType: string;
 }
 
@@ -171,7 +171,7 @@ const initialForm: FormData = {
   schoolId: "", schoolName: "", department: "", course: "",
   additionalSchools: [],
   enrollmentYear: "", enrollmentMonth: "4", applicationReason: "",
-  lastSchoolName: "", lastSchoolCountry: "", lastSchoolGraduate: "", workExperience: "",
+  lastSchoolName: "", lastSchoolCountry: "", lastSchoolGraduate: "", priorAttendanceRate: "", workExperience: "",
   examMode: "一般", referrerName: "", referrerType: "",
 };
 
@@ -442,16 +442,16 @@ function Step1({ form, onChange, errors, formConfig }: {
           <SectionTitle icon="🗾">在日情報・日本語能力</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isEnabled("residenceStatus") && (
-              <Field label="在留資格（日本在住の方）">
-                <Select value={form.residenceStatus} onChange={e => onChange("residenceStatus", e.target.value)}>
-                  <option value="">選択してください（任意）</option>
+              <Field label="在留資格（日本在住の方）" required={isRequired("residenceStatus", false)} error={errors.residenceStatus}>
+                <Select value={form.residenceStatus} error={!!errors.residenceStatus} onChange={e => onChange("residenceStatus", e.target.value)}>
+                  <option value="">{isRequired("residenceStatus", false) ? "選択してください" : "選択してください（任意）"}</option>
                   {["留学","技術・人文知識・国際業務","特定技能","技能実習","永住者","定住者","日本人の配偶者等","家族滞在","その他"].map(v =>
                     <option key={v} value={v}>{v}</option>)}
                 </Select>
               </Field>
             )}
             {isEnabled("residenceExpiry") && (
-              <Field label="在留期限（日本在住の方）">
+              <Field label="在留期限（日本在住の方）" required={isRequired("residenceExpiry", false)} error={errors.residenceExpiry}>
                 <DateSelect value={form.residenceExpiry} onChange={v => onChange("residenceExpiry", v)}
                   minYear={new Date().getFullYear()} maxYear={new Date().getFullYear() + 10} />
               </Field>
@@ -711,6 +711,13 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
             )}
           </div>
 
+          {isEnabled("priorAttendanceRate") && (
+            <Field label="出身校での出席率" required={isRequired("priorAttendanceRate", false)}
+              hint="例：95%、出席日数150日/総授業日数158日" error={errors.priorAttendanceRate}>
+              <Input placeholder="例：95%" value={form.priorAttendanceRate} error={!!errors.priorAttendanceRate}
+                onChange={e => onChange("priorAttendanceRate", e.target.value)} />
+            </Field>
+          )}
           {isEnabled("workExperience") && (
             <Field label="職務経歴（任意）" hint="直近の職務経歴をご記入ください">
               <textarea className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-y hover:border-gray-300"
@@ -952,6 +959,10 @@ function Step3({ applicationId, uploadedDocs, onUpload, onDelete, formConfig }: 
 }
 
 // ========== Step 4 ==========
+interface PaymentConfig {
+  bankName: string; accountType: string; accountNumber: string; accountHolder: string; deadline: string;
+}
+
 function Step4Payment({ applicationId, schoolCount, feeStatus, onFeeStatusChange }: {
   applicationId: string | null; schoolCount: number; feeStatus: string; onFeeStatusChange: (s: string) => void;
 }) {
@@ -959,6 +970,11 @@ function Step4Payment({ applicationId, schoolCount, feeStatus, onFeeStatusChange
   const [uploading, setUploading] = useState(false);
   const [uploadedReceipt, setUploadedReceipt] = useState<{ name: string } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config/payment").then(r => r.json()).then(setPaymentConfig).catch(() => {});
+  }, []);
 
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -989,14 +1005,24 @@ function Step4Payment({ applicationId, schoolCount, feeStatus, onFeeStatusChange
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">🏦 振込先情報</h3>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-          {[["銀行名","三菱UFJ銀行 新宿支店"],["口座種別","普通"],["口座番号","1234567"],["口座名義","（ザ）ハバガクエン"],["振込期限","出願後7日以内"]].map(([k,v]) => (
-            <div key={k} className="contents">
-              <span className="text-gray-500">{k}</span>
-              <span className="font-semibold text-gray-900">{v}</span>
-            </div>
-          ))}
-        </div>
+        {paymentConfig ? (
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+            {[
+              ["銀行名", paymentConfig.bankName],
+              ["口座種別", paymentConfig.accountType],
+              ["口座番号", paymentConfig.accountNumber],
+              ["口座名義", paymentConfig.accountHolder],
+              ["振込期限", paymentConfig.deadline],
+            ].map(([k, v]) => (
+              <div key={k} className="contents">
+                <span className="text-gray-500">{k}</span>
+                <span className="font-semibold text-gray-900">{v}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">読み込み中...</p>
+        )}
         <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
           振込名義は必ず<strong>出願者本人のお名前（カタカナ）</strong>でお振込みください。
         </div>
@@ -1087,7 +1113,6 @@ function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedD
             {add.course && <Row label={`並願校${idx + 1} コース`} value={add.course} />}
           </div>
         ))}
-        {form.course && <Row label="コース" value={form.course} />}
         <Row label="入学希望" value={`${form.enrollmentYear}年${form.enrollmentMonth}月`} />
         <Row label="志望動機" value={form.applicationReason} />
       </Section>
@@ -1257,6 +1282,28 @@ function ApplyPageInner() {
   const [isResumed, setIsResumed] = useState(false); // resume フローかどうか
   const [preselectedSchool, setPreselectedSchool] = useState(false); // トップから学校指定で来た場合
   const schoolCount = 1 + form.additionalSchools.length;
+  const [activeCohorts, setActiveCohorts] = useState<{ id: string; name: string; round: number; schoolKey: string | null; deadline: string | null; examDate: string | null }[] | null>(null);
+  const [schoolClosed, setSchoolClosed] = useState(false); // 受付期間外フラグ
+
+  // 受付中バッチを取得
+  useEffect(() => {
+    fetch("/api/apply/cohorts")
+      .then(r => r.json())
+      .then(d => {
+        const cohorts = Array.isArray(d) ? d : [];
+        setActiveCohorts(cohorts);
+        // 学校が既に選択されていれば受付チェック（resumeフローは除外）
+        if (cohorts.length > 0) {
+          const schoolParam = new URLSearchParams(window.location.search).get("school");
+          const resumeParam = new URLSearchParams(window.location.search).get("resume");
+          if (schoolParam && !resumeParam) {
+            const ok = cohorts.some((c: { schoolKey: string | null }) => !c.schoolKey || c.schoolKey === schoolParam);
+            if (!ok) setSchoolClosed(true);
+          }
+        }
+      })
+      .catch(() => setActiveCohorts([]));
+  }, []);
 
   // Fetch schools from DB on mount (with fallback to hardcoded)
   useEffect(() => {
@@ -1268,10 +1315,8 @@ function ApplyPageInner() {
 
         // ?school=xxx パラメータ処理：fetch完了後に直接適用
         const schoolParam = new URLSearchParams(window.location.search).get("school");
-        console.log("[apply] schoolParam=", schoolParam, "list ids=", list.map((s: SchoolData) => s.id));
         if (schoolParam) {
           const found = list.find((s: SchoolData) => s.id === schoolParam || s.schoolKey === schoolParam);
-          console.log("[apply] found=", found);
           if (found) {
             setForm(prev => ({
               ...prev,
@@ -1280,6 +1325,13 @@ function ApplyPageInner() {
             }));
             setPreselectedSchool(true);
             fetchFormConfig(found.id);
+            // 受付チェック（activeCohorts がロード済みなら即チェック）
+            setActiveCohorts(prev => {
+              const cohorts = prev ?? [];
+              const ok = cohorts.some(c => !c.schoolKey || c.schoolKey === found.id);
+              if (!ok && cohorts.length > 0) setSchoolClosed(true);
+              return prev;
+            });
           }
         }
       })
@@ -1312,13 +1364,6 @@ function ApplyPageInner() {
       .catch(() => {});
   };
 
-  useEffect(() => {
-    fetchFormConfig();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-
-
   // resume フロー: URL に ?resume=1&applicationNo=XXX&email=YYY がある場合
   // 既存の出願データを取得して Step3 から再開
   const handleResume = useCallback(async (appNo: string, emailAddr: string) => {
@@ -1333,9 +1378,44 @@ function ApplyPageInner() {
         setApplicationNo(data.applicationNo);
         setUploadedDocs(data.documents || []);
         setExamFeeStatus(data.examFeeStatus || "未払い");
-        setIsResumed(true); // resume フロー確定
-        // 書類待ち・受付中 → Step3 から再開
-        // 選考費未払い → Step4 から再開
+        setIsResumed(true);
+        // form データを復元（Step5確認画面で表示できるように）
+        setForm(prev => ({
+          ...prev,
+          lastName: data.lastName || prev.lastName,
+          firstName: data.firstName || prev.firstName,
+          lastNameKana: data.lastNameKana || prev.lastNameKana,
+          firstNameKana: data.firstNameKana || prev.firstNameKana,
+          birthDate: data.birthDate || prev.birthDate,
+          gender: data.gender || prev.gender,
+          nationality: data.nationality || prev.nationality,
+          phone: data.phone || prev.phone,
+          email: data.email || prev.email,
+          postalCode: data.postalCode || prev.postalCode,
+          prefecture: data.prefecture || prev.prefecture,
+          city: data.city || prev.city,
+          address: data.address || prev.address,
+          addressDetail: data.addressDetail || prev.addressDetail,
+          residenceStatus: data.residenceStatus || prev.residenceStatus,
+          residenceExpiry: data.residenceExpiry || prev.residenceExpiry,
+          japaneseLevel: data.japaneseLevel || prev.japaneseLevel,
+          jlptCertified: data.jlptCertified ?? prev.jlptCertified,
+          schoolId: data.schoolId || prev.schoolId,
+          schoolName: data.schoolName || prev.schoolName,
+          department: data.department || prev.department,
+          course: data.course || prev.course,
+          enrollmentYear: data.enrollmentYear || prev.enrollmentYear,
+          enrollmentMonth: data.enrollmentMonth || prev.enrollmentMonth,
+          applicationReason: data.applicationReason || prev.applicationReason,
+          lastSchoolName: data.lastSchoolName || prev.lastSchoolName,
+          lastSchoolCountry: data.lastSchoolCountry || prev.lastSchoolCountry,
+          lastSchoolGraduate: data.lastSchoolGraduate || prev.lastSchoolGraduate,
+          workExperience: data.workExperience || prev.workExperience,
+          examMode: data.examMode || prev.examMode,
+          referrerName: data.referrerName || prev.referrerName,
+          referrerType: data.referrerType || prev.referrerType,
+        }));
+        // 書類待ち → Step3、選考費未払い以外 → Step4
         if (data.examFeeStatus && data.examFeeStatus !== "未払い") {
           setCurrentStep(4);
         } else {
@@ -1433,6 +1513,8 @@ function ApplyPageInner() {
     if (isFieldRequired("city") && !form.city) e.city = "市区町村を入力してください";
     if (isFieldRequired("address") && !form.address) e.address = "番地を入力してください";
     if (isFieldRequired("japaneseLevel") && !form.japaneseLevel) e.japaneseLevel = "日本語レベルを選択してください";
+    if (isFieldRequired("residenceStatus", false) && !form.residenceStatus) e.residenceStatus = "在留資格を選択してください";
+    if (isFieldRequired("residenceExpiry", false) && !form.residenceExpiry) e.residenceExpiry = "在留期限を入力してください";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -1458,6 +1540,7 @@ function ApplyPageInner() {
     if (isFieldRequired("lastSchoolName") && !form.lastSchoolName) e.lastSchoolName = "学校名を入力してください";
     if (isFieldRequired("lastSchoolCountry") && !form.lastSchoolCountry) e.lastSchoolCountry = "国を入力してください";
     if (isFieldRequired("lastSchoolGraduate") && !form.lastSchoolGraduate) e.lastSchoolGraduate = "卒業状況を選択してください";
+    if (isFieldRequired("priorAttendanceRate", false) && !form.priorAttendanceRate) e.priorAttendanceRate = "出席率を入力してください";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -1508,6 +1591,25 @@ function ApplyPageInner() {
     } else if (currentStep === 4) { setCurrentStep(5); }
   };
 
+  const handleSubmit = async () => {
+    if (!applicationId) { setSubmitError("出願IDが見つかりません"); return; }
+    setSubmitting(true); setSubmitError(null);
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/submit`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "提出に失敗しました");
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "提出に失敗しました");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleBack = () => {
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1529,6 +1631,38 @@ function ApplyPageInner() {
   }
 
   // 完了画面
+  // 受付期間外（resumeフローは除外）
+  const isResume = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("resume") === "1";
+  if (schoolClosed && !isResume) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-white border-b border-gray-200 py-4 px-4">
+          <div className="max-w-3xl mx-auto flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">専</div>
+            <span className="font-bold text-gray-800">入学出願システム</span>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏸</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">現在、出願受付期間外です</h2>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              申し訳ございませんが、現在この学校の出願受付期間ではございません。<br/>
+              次回の選考情報は各校の入学相談室にお問い合わせください。
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800 text-left">
+              <p className="font-bold mb-1">📞 お問い合わせ</p>
+              <p>各校の入学相談室（平日 9:00〜17:00）</p>
+            </div>
+            <a href="/" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
+              トップページへ戻る
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (submitted && applicationNo) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1646,9 +1780,9 @@ function ApplyPageInner() {
                 ) : currentStep === 4 ? "確認へ進む →" : "次へ進む →"}
               </button>
             ) : (
-              <button onClick={() => setSubmitted(true)} disabled={submitting}
+              <button onClick={handleSubmit} disabled={submitting}
                 className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition shadow-sm shadow-green-200">
-                ✅ 提出する
+                {submitting ? <><span className="animate-spin">⏳</span> 提出中...</> : "✅ 提出する"}
               </button>
             )}
           </div>

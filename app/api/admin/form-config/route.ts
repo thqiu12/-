@@ -15,6 +15,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId") || null;
 
+    // デフォルトフィールドをupsert（存在しない場合のみ挿入）
+    const existingKeys = await prisma.formFieldConfig.findMany({
+      where: { schoolId: null },
+      select: { fieldKey: true },
+    });
+    const existingKeySet = new Set(existingKeys.map(e => e.fieldKey));
+    const missing = FORM_FIELD_DEFAULTS.filter(f => !existingKeySet.has(f.fieldKey));
+    if (missing.length > 0) {
+      for (const f of missing) {
+        const exists = await prisma.formFieldConfig.findFirst({ where: { fieldKey: f.fieldKey, schoolId: null } });
+        if (!exists) {
+          await prisma.formFieldConfig.create({
+            data: { fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null },
+          });
+        }
+      }
+    }
+
     // Always fetch global configs (schoolId IS NULL)
     const globalConfigs = await prisma.formFieldConfig.findMany({
       where: { schoolId: null },
@@ -155,33 +173,25 @@ export async function PUT(request: NextRequest) {
         description?: string | null;
       }) => {
         const schoolId = item.schoolId ?? null;
-        return prisma.formFieldConfig.upsert({
-          where: {
-            fieldKey_schoolId: {
-              fieldKey: item.fieldKey,
-              schoolId: schoolId as string,
-            },
-          },
-          update: {
-            label: item.label,
-            section: item.section,
-            fieldType: item.fieldType ?? "text",
-            isEnabled: item.isEnabled,
-            isRequired: item.isRequired,
-            displayOrder: item.displayOrder,
-            description: item.description ?? null,
-          },
-          create: {
-            fieldKey: item.fieldKey,
-            schoolId: schoolId,
-            label: item.label,
-            section: item.section,
-            fieldType: item.fieldType ?? "text",
-            isEnabled: item.isEnabled,
-            isRequired: item.isRequired,
-            displayOrder: item.displayOrder,
-            description: item.description ?? null,
-          },
+        const updateData = {
+          label: item.label,
+          section: item.section,
+          fieldType: item.fieldType ?? "text",
+          isEnabled: item.isEnabled,
+          isRequired: item.isRequired,
+          displayOrder: item.displayOrder,
+          description: item.description ?? null,
+        };
+        // schoolId=null の場合、Prisma の compound unique upsert が使えないため findFirst + update/create
+        return prisma.formFieldConfig.findFirst({
+          where: { fieldKey: item.fieldKey, schoolId },
+        }).then(existing => {
+          if (existing) {
+            return prisma.formFieldConfig.update({ where: { id: existing.id }, data: updateData });
+          }
+          return prisma.formFieldConfig.create({
+            data: { fieldKey: item.fieldKey, schoolId, ...updateData },
+          });
         });
       })
     );
@@ -213,18 +223,31 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "コアフィールドは削除できません" }, { status: 403 });
     }
 
-    await prisma.formFieldConfig.delete({
-      where: {
-        fieldKey_schoolId: {
-          fieldKey,
-          schoolId: schoolId as string,
-        },
-      },
-    });
+    const target = await prisma.formFieldConfig.findFirst({ where: { fieldKey, schoolId } });
+    if (!target) return NextResponse.json({ error: "フィールドが見つかりません" }, { status: 404 });
+    await prisma.formFieldConfig.delete({ where: { id: target.id } });
 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "削除に失敗しました" }, { status: 500 });
+  }
+}
+
+// PATCH: 特定学校の全カスタム設定を削除（グローバルに戻す）
+export async function PATCH(request: NextRequest) {
+  const session = await getSession(request);
+  if (!checkAdmin(session)) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
+  try {
+    const { searchParams } = new URL(request.url);
+    const schoolId = searchParams.get("resetSchoolId");
+    if (!schoolId) return NextResponse.json({ error: "resetSchoolIdが必要です" }, { status: 400 });
+    const result = await prisma.formFieldConfig.deleteMany({ where: { schoolId } });
+    return NextResponse.json({ success: true, deleted: result.count });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "リセットに失敗しました" }, { status: 500 });
   }
 }

@@ -29,6 +29,9 @@ interface Cohort {
   defaultTuitionBankInfo: string | null;
   defaultStep2Deadline: string | null;
   defaultStep3Deadline: string | null;
+  schoolKey: string | null;
+  acceptStart: string | null;
+  acceptEnd: string | null;
 }
 
 function getCohortStatusStyle(status: string): string {
@@ -61,6 +64,10 @@ export default function CohortsPage() {
   const [formIsDefault, setFormIsDefault] = useState(false);
   const [formYear, setFormYear] = useState(new Date().getFullYear());
   const [formRound, setFormRound] = useState(1);
+  const [formSchoolKey, setFormSchoolKey] = useState("");
+  const [formAcceptStart, setFormAcceptStart] = useState("");
+  const [formAcceptEnd, setFormAcceptEnd] = useState("");
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
   // デフォルト学費設定
   const [formTuitionPlan, setFormTuitionPlan] = useState("全額");
   const [formTuitionAmount, setFormTuitionAmount] = useState("");
@@ -87,7 +94,12 @@ export default function CohortsPage() {
     }
   };
 
-  useEffect(() => { fetchCohorts(); }, []);
+  useEffect(() => {
+    fetchCohorts();
+    fetch("/api/apply/schools").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setSchools(d.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
+    }).catch(() => {});
+  }, []);
 
   const resetTuitionForm = () => {
     setFormTuitionPlan("全額");
@@ -110,6 +122,9 @@ export default function CohortsPage() {
     setFormIsDefault(false);
     setFormYear(new Date().getFullYear());
     setFormRound(1);
+    setFormSchoolKey("");
+    setFormAcceptStart("");
+    setFormAcceptEnd("");
     resetTuitionForm();
     setFormError(null);
     setShowModal(true);
@@ -125,6 +140,9 @@ export default function CohortsPage() {
     setFormIsDefault(cohort.isDefault);
     setFormYear(cohort.year || new Date().getFullYear());
     setFormRound(cohort.round || 1);
+    setFormSchoolKey(cohort.schoolKey || "");
+    setFormAcceptStart(cohort.acceptStart ? cohort.acceptStart.slice(0, 16) : "");
+    setFormAcceptEnd(cohort.acceptEnd ? cohort.acceptEnd.slice(0, 16) : "");
     setFormTuitionPlan(cohort.defaultTuitionPlan || "全額");
     setFormTuitionAmount(cohort.defaultTuitionAmount || "");
     setFormTuitionAmount2(cohort.defaultTuitionAmount2 || "");
@@ -151,6 +169,9 @@ export default function CohortsPage() {
         isDefault: formIsDefault,
         year: formYear,
         round: formRound,
+        schoolKey: formSchoolKey || null,
+        acceptStart: formAcceptStart ? new Date(formAcceptStart).toISOString() : null,
+        acceptEnd: formAcceptEnd ? new Date(formAcceptEnd).toISOString() : null,
         defaultTuitionPlan:      formTuitionPlan || null,
         defaultTuitionAmount:    formTuitionAmount || null,
         defaultTuitionAmount2:   formTuitionAmount2 || null,
@@ -316,8 +337,10 @@ export default function CohortsPage() {
                         <span className="text-sm font-semibold text-gray-700">{cohort.examDate || "—"}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-gray-400">締切</span>
-                        <span className="text-sm font-semibold text-gray-700">{cohort.deadline || "—"}</span>
+                        <span className="text-xs text-gray-400">受付終了</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                          {cohort.acceptEnd ? new Date(cohort.acceptEnd).toLocaleDateString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-400">申請件数</span>
@@ -406,6 +429,30 @@ export default function CohortsPage() {
                 </div>
               </div>
 
+              {/* 学校別受付設定 */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-bold text-amber-700">🏫 学校別受付設定</p>
+                <div>
+                  <label className="form-label text-xs">対象学校（空欄＝全校共通）</label>
+                  <select className="form-input" value={formSchoolKey} onChange={e => setFormSchoolKey(e.target.value)}>
+                    <option value="">全校共通</option>
+                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label text-xs">受付開始日時</label>
+                    <input type="datetime-local" className="form-input text-sm" value={formAcceptStart}
+                      onChange={e => setFormAcceptStart(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label text-xs">受付終了日時</label>
+                    <input type="datetime-local" className="form-input text-sm" value={formAcceptEnd}
+                      onChange={e => setFormAcceptEnd(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">選考日</label>
@@ -417,16 +464,7 @@ export default function CohortsPage() {
                     onChange={(e) => setFormExamDate(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className="form-label">出願締切</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="例: 2026年3月1日"
-                    value={formDeadline}
-                    onChange={(e) => setFormDeadline(e.target.value)}
-                  />
-                </div>
+
               </div>
               <div>
                 <label className="form-label">ステータス</label>

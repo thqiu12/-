@@ -1,9 +1,7 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-  title: "入学出願システム｜羽場学園・平井学園",
-  description: "学校法人羽場学園 中央ゼミナール・学校法人平井学園 神奈川柔整鍼灸専門学校 オンライン入学出願システム",
-};
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const SCHOOLS = [
   {
@@ -11,7 +9,7 @@ const SCHOOLS = [
     name: "中央ゼミナール",
     hojin: "学校法人 羽場学園",
     icon: "📚",
-    color: { header: "bg-blue-600", btn: "bg-blue-600 hover:bg-blue-700", tag: "bg-blue-50 text-blue-700 border-blue-100", badge: "bg-blue-100 text-blue-700", ring: "ring-blue-200" },
+    color: { header: "bg-blue-600", btn: "bg-blue-600 hover:bg-blue-700", tag: "bg-blue-50 text-blue-700 border-blue-100", badge: "bg-blue-100 text-blue-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "大学・大学院・美術系の受験指導に特化した専修学校。留学生向けの日本語指導から難関大学合格まで、個別カリキュラムで徹底サポートします。",
     departments: [
       { name: "大学・大学院受験科", duration: "1年制" },
@@ -24,7 +22,7 @@ const SCHOOLS = [
     nameShort: "TDB",
     hojin: "学校法人 羽場学園",
     icon: "💻",
-    color: { header: "bg-violet-600", btn: "bg-violet-600 hover:bg-violet-700", tag: "bg-violet-50 text-violet-700 border-violet-100", badge: "bg-violet-100 text-violet-700", ring: "ring-violet-200" },
+    color: { header: "bg-violet-600", btn: "bg-violet-600 hover:bg-violet-700", tag: "bg-violet-50 text-violet-700 border-violet-100", badge: "bg-violet-100 text-violet-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "デジタルビジネス・デジタルメディアの実践スキルを習得する専門学校。最新テクノロジーとビジネスを融合した教育で、デジタル社会を牽引する人材を育成します。",
     departments: [
       { name: "デジタルビジネス科", duration: "2年制" },
@@ -36,7 +34,7 @@ const SCHOOLS = [
     name: "神奈川柔整鍼灸専門学校",
     hojin: "学校法人 平井学園",
     icon: "⚕️",
-    color: { header: "bg-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700", tag: "bg-emerald-50 text-emerald-700 border-emerald-100", badge: "bg-emerald-100 text-emerald-700", ring: "ring-emerald-200" },
+    color: { header: "bg-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700", tag: "bg-emerald-50 text-emerald-700 border-emerald-100", badge: "bg-emerald-100 text-emerald-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "柔道整復師・鍼灸師の国家資格取得を目指す専門学校。豊富な臨床実習と国家試験対策で、医療・スポーツ分野で活躍できる人材を育成します。",
     departments: [
       { name: "柔道整復師科", duration: "3年制" },
@@ -61,7 +59,40 @@ const durationColor: Record<string, string> = {
   "3年制": "bg-orange-100 text-orange-700",
 };
 
+interface ActiveCohort {
+  id: string;
+  name: string;
+  year: number;
+  round: number;
+  schoolKey: string | null;
+  acceptStart: string | null;
+  acceptEnd: string | null;
+  examDate: string | null;
+  deadline: string | null;
+}
+
 export default function HomePage() {
+  const [activeCohorts, setActiveCohorts] = useState<ActiveCohort[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/apply/cohorts")
+      .then(r => r.json())
+      .then(d => setActiveCohorts(Array.isArray(d) ? d : []))
+      .catch(() => setActiveCohorts([]));
+  }, []);
+
+  // 学校が受付中かどうか、受付中のバッチ情報を返す
+  const getSchoolCohort = (schoolId: string): ActiveCohort | null => {
+    if (!activeCohorts) return null;
+    // 学校専用バッチ優先、次に全校共通バッチ
+    const specific = activeCohorts.find(c => c.schoolKey === schoolId);
+    if (specific) return specific;
+    const global = activeCohorts.find(c => !c.schoolKey);
+    return global || null;
+  };
+
+  const isAccepting = (schoolId: string) => getSchoolCohort(schoolId) !== null;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -101,43 +132,102 @@ export default function HomePage() {
           {/* 学校カード */}
           <section>
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">志望校を選んで出願する</h2>
-            <div className="grid md:grid-cols-3 gap-5">
-              {SCHOOLS.map(school => (
-                <div key={school.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
-                  {/* カラーヘッダー */}
-                  <div className={`${school.color.header} px-5 py-5`}>
-                    <div className="text-3xl mb-2">{school.icon}</div>
-                    <p className="text-white/70 text-xs mb-0.5">{school.hojin}</p>
-                    <h3 className="text-white font-bold text-lg leading-snug">
-                      {school.name}
-                      {"nameShort" in school && <span className="text-white/60 text-sm ml-1">（{(school as typeof school & {nameShort: string}).nameShort}）</span>}
-                    </h3>
-                  </div>
 
-                  <div className="p-5 flex flex-col flex-1">
-                    <p className="text-gray-500 text-sm leading-relaxed mb-5">{school.desc}</p>
+            {/* 受付状況ロード中 */}
+            {activeCohorts === null && (
+              <div className="flex items-center justify-center py-8 text-gray-400 text-sm gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                受付状況を確認中...
+              </div>
+            )}
 
-                    {/* 学科リスト */}
-                    <div className="mb-5 flex-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">学科</p>
-                      <div className="flex flex-col gap-2">
-                        {school.departments.map(d => (
-                          <div key={d.name} className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs px-2.5 py-1 rounded-full border ${school.color.tag}`}>{d.name}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${durationColor[d.duration] ?? "bg-gray-100 text-gray-600"}`}>{d.duration}</span>
+            {activeCohorts !== null && (
+              <div className="grid md:grid-cols-3 gap-5">
+                {SCHOOLS.map(school => {
+                  const cohort = getSchoolCohort(school.id);
+                  const accepting = cohort !== null;
+
+                  return (
+                    <div key={school.id} className={`bg-white rounded-2xl border shadow-sm transition-shadow overflow-hidden flex flex-col ${accepting ? "border-gray-200 hover:shadow-md" : "border-gray-100 opacity-80"}`}>
+                      {/* カラーヘッダー */}
+                      <div className={`${school.color.header} px-5 py-5 relative`}>
+                        {/* 受付状況バッジ */}
+                        <div className="absolute top-3 right-3">
+                          {accepting ? (
+                            <span className="flex items-center gap-1 text-xs font-bold bg-white/20 text-white px-2.5 py-1 rounded-full backdrop-blur-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse inline-block"></span>
+                              第{cohort!.round}期 受付中
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold bg-black/20 text-white/80 px-2.5 py-1 rounded-full">
+                              受付期間外
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-3xl mb-2">{school.icon}</div>
+                        <p className="text-white/70 text-xs mb-0.5">{school.hojin}</p>
+                        <h3 className="text-white font-bold text-lg leading-snug">
+                          {school.name}
+                          {"nameShort" in school && <span className="text-white/60 text-sm ml-1">（{(school as typeof school & {nameShort: string}).nameShort}）</span>}
+                        </h3>
+                      </div>
+
+                      <div className="p-5 flex flex-col flex-1">
+                        <p className="text-gray-500 text-sm leading-relaxed mb-4">{school.desc}</p>
+
+                        {/* 受付中の場合：選考情報バナー */}
+                        {accepting && cohort && (
+                          <div className="mb-4 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 text-xs text-green-800 space-y-1">
+                            <p className="font-bold text-green-700">📅 第{cohort.round}期選考 受付中</p>
+                            {cohort.acceptEnd && (
+                              <p>出願締切：<span className="font-semibold">{new Date(cohort.acceptEnd).toLocaleDateString("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}まで</span></p>
+                            )}
+                            {cohort.examDate && (
+                              <p>選考日：<span className="font-semibold">{cohort.examDate}</span></p>
+                            )}
                           </div>
-                        ))}
+                        )}
+
+                        {/* 受付期間外の場合 */}
+                        {!accepting && (
+                          <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-500">
+                            <p className="font-semibold">⏸ 現在、出願受付期間外です</p>
+                            <p className="mt-0.5">次回の選考情報は各校にお問い合わせください</p>
+                          </div>
+                        )}
+
+                        {/* 学科リスト */}
+                        <div className="mb-5 flex-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">学科</p>
+                          <div className="flex flex-col gap-2">
+                            {school.departments.map(d => (
+                              <div key={d.name} className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-xs px-2.5 py-1 rounded-full border ${school.color.tag}`}>{d.name}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${durationColor[d.duration] ?? "bg-gray-100 text-gray-600"}`}>{d.duration}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {accepting ? (
+                          <Link href={`/apply?school=${school.id}`}
+                            className={`block w-full ${school.color.btn} text-white text-center text-sm font-semibold py-3 rounded-xl transition-colors`}>
+                            出願する →
+                          </Link>
+                        ) : (
+                          <div className="block w-full bg-gray-100 text-gray-400 text-center text-sm font-semibold py-3 rounded-xl cursor-not-allowed">
+                            受付期間外
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <Link href={`/apply?school=${school.id}`}
-                      className={`block w-full ${school.color.btn} text-white text-center text-sm font-semibold py-3 rounded-xl transition-colors`}>
-                      出願する →
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* 出願の流れ */}

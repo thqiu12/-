@@ -329,6 +329,19 @@ export default function FormConfigPage() {
             >
               <span className="text-base leading-none">+</span> フィールド追加
             </button>
+            {selectedSchoolId && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`「${selectedSchoolId}」の学校固有設定をすべて削除してグローバル設定に戻しますか？`)) return;
+                  const res = await fetch(`/api/admin/form-config?resetSchoolId=${encodeURIComponent(selectedSchoolId)}`, { method: "PATCH" });
+                  if (res.ok) { setSuccessMsg("グローバル設定に戻しました"); fetchConfigs(selectedSchoolId); }
+                  else setError("リセットに失敗しました");
+                }}
+                className="px-4 py-2 bg-orange-100 text-orange-700 border border-orange-200 text-sm font-semibold rounded-lg hover:bg-orange-200 transition flex items-center gap-1.5"
+              >
+                🔄 グローバル設定に戻す
+              </button>
+            )}
             <button
               onClick={handleSave}
               disabled={saving || configs.length === 0}

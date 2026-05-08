@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getStatusStyle } from "@/lib/utils";
 
@@ -520,7 +519,7 @@ function StudentPortalSection({ applicationNo, email }: { applicationNo: string;
 // ===== 在籍情報コンポーネント END =====
 
 function StatusPageInner() {
-  const searchParams = useSearchParams();
+
   const [applicationNo, setApplicationNo] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -572,14 +571,16 @@ function StatusPageInner() {
   }, []);
 
   useEffect(() => {
-    const appNo = searchParams.get("applicationNo");
-    const emailAddr = searchParams.get("email");
+    // window.location.search を直接読む（useSearchParams は Static Generation では空になる）
+    const sp = new URLSearchParams(window.location.search);
+    const appNo = sp.get("applicationNo");
+    const emailAddr = sp.get("email");
     if (appNo && emailAddr) {
       setApplicationNo(appNo);
       setEmail(emailAddr);
       fetchStatus(appNo, emailAddr);
     }
-  }, [searchParams, fetchStatus]);
+  }, [fetchStatus]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
