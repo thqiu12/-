@@ -1889,386 +1889,399 @@ export default function ApplicationDetailPage() {
 
 
 
-        {/* 入学手続き管理（合格後のみ・入学手続きタブ） */}
-            <div style={{display: activeTab==="enrollment" ? undefined : "none"}}>
-            {(application.status === "合格" || application.status === "補欠合格") && (
-              <div className="card">
-                {/* ヘッダー */}
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-                  <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide">
-                    入学手続き管理
-                  </h3>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    enrollStatus === "完了" ? "bg-green-100 text-green-700" :
-                    enrollPublished ? "bg-blue-100 text-blue-700" :
-                    "bg-gray-100 text-gray-500"
-                  }`}>
-                    {enrollStatus}
-                  </span>
+
+
+
+    {/* 入学手続き管理（合格後のみ・入学手続きタブ） */}
+        <div style={{display: activeTab==="enrollment" ? undefined : "none"}}>
+        {!(application.status === "合格" || application.status === "補欠合格") && (
+          <div className="card bg-gray-50 border border-dashed border-gray-300">
+            <div className="py-8 text-center text-gray-400">
+              <div className="text-4xl mb-3">🎓</div>
+              <p className="font-medium text-gray-600 mb-1">入学手続き管理</p>
+              <p className="text-sm">ステータスが「合格」または「補欠合格」になると手続き管理が開始されます。</p>
+              <p className="text-xs mt-2">現在のステータス：<span className="font-bold">{application.status}</span></p>
+            </div>
+          </div>
+        )}
+        {(application.status === "合格" || application.status === "補欠合格") && (
+          <div className="card">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide">
+                入学手続き管理
+              </h3>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                enrollStatus === "完了" ? "bg-green-100 text-green-700" :
+                enrollPublished ? "bg-blue-100 text-blue-700" :
+                "bg-gray-100 text-gray-500"
+              }`}>
+                {enrollStatus}
+              </span>
+            </div>
+
+            {/* 電子署名確認 */}
+            {application.enrollmentSignature ? (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs font-bold text-green-800 mb-2">✍️ 電子署名済み</p>
+                <p className="text-xs text-green-700 mb-1">
+                  署名者：<strong>{application.enrollmentSignature.signerName}</strong>
+                </p>
+                <p className="text-xs text-green-600 mb-2">
+                  署名日時：{formatDateTimeJP(application.enrollmentSignature.signedAt)}
+                </p>
+                <div className="border border-green-300 rounded-lg overflow-hidden bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={application.enrollmentSignature.signatureData}
+                    alt="電子署名"
+                    className="w-full h-auto max-h-24 object-contain p-1"
+                  />
                 </div>
-
-                {/* 電子署名確認 */}
-                {application.enrollmentSignature ? (
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-xs font-bold text-green-800 mb-2">✍️ 電子署名済み</p>
-                    <p className="text-xs text-green-700 mb-1">
-                      署名者：<strong>{application.enrollmentSignature.signerName}</strong>
-                    </p>
-                    <p className="text-xs text-green-600 mb-2">
-                      署名日時：{formatDateTimeJP(application.enrollmentSignature.signedAt)}
-                    </p>
-                    <div className="border border-green-300 rounded-lg overflow-hidden bg-white">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={application.enrollmentSignature.signatureData}
-                        alt="電子署名"
-                        className="w-full h-auto max-h-24 object-contain p-1"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-xs text-gray-500">✍️ 電子署名：未署名</p>
-                  </div>
-                )}
-
-                {/* 入学手続き提出書類 */}
-                {(() => {
-                  const enrollDocs = application.documents.filter(d => d.docType.startsWith("入学手続き_"));
-                  return enrollDocs.length > 0 ? (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-xs font-bold text-blue-800 mb-2">📁 入学手続き提出書類（{enrollDocs.length}件）</p>
-                      <div className="space-y-1.5">
-                        {enrollDocs.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between bg-white rounded-lg px-2 py-1.5">
-                            <div>
-                              <p className="text-xs font-medium text-gray-700">{doc.docType.replace("入学手続き_", "")}</p>
-                              <p className="text-xs text-gray-400">{doc.originalName}</p>
-                            </div>
-                            <a
-                              href={doc.filePath}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-navy-600 hover:text-navy-800 font-medium border border-navy-200 px-2 py-1 rounded"
-                            >
-                              開く
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <p className="text-xs text-gray-500">📁 入学手続き書類：未提出</p>
-                    </div>
-                  );
-                })()}
-
-                {/* 学生からのメモ */}
-                {enrollStudentMemo && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-xs font-bold text-amber-800 mb-1">📩 学生からの報告</p>
-                    <p className="text-sm text-amber-900 whitespace-pre-wrap">{enrollStudentMemo}</p>
-                    {enrollCompletedAt && (
-                      <p className="text-xs text-amber-600 mt-1">完了報告日：{formatDateTimeJP(enrollCompletedAt)}</p>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-
-                  {/* STEP 1: 学費納入 */}
-                  <div className="p-3 rounded-xl border-2 border-blue-200 bg-blue-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-bold text-blue-800">STEP 1 · 💴 学費納入</p>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={tuitionPaid} onChange={(e) => setTuitionPaid(e.target.checked)} className="rounded text-green-600" />
-                        <span className={`text-xs font-medium ${tuitionPaid ? "text-green-600" : "text-gray-400"}`}>{tuitionPaid ? "✅ 納入確認済み" : "未確認"}</span>
-                      </label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <label className="block text-xs text-blue-700 mb-1 font-medium">支払いプラン</label>
-                        <select className="form-input text-xs" value={tuitionPlan} onChange={(e) => setTuitionPlan(e.target.value)}>
-                          <option value="全額">全額一括</option>
-                          <option value="分割（2期）">分割（2期）</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-blue-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
-                        <input type="date" className="form-input text-xs" value={step1Deadline} onChange={(e) => setStep1Deadline(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <label className="block text-xs text-blue-700 mb-1">{tuitionPlan === "分割（2期）" ? "第1期金額" : "金額"}</label>
-                        <input type="text" className="form-input text-xs" placeholder="例：350,000円" value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} />
-                      </div>
-                      {tuitionPlan === "分割（2期）" && (
-                        <div>
-                          <label className="block text-xs text-blue-700 mb-1">第2期金額</label>
-                          <input type="text" className="form-input text-xs" placeholder="例：200,000円" value={tuitionAmount2} onChange={(e) => setTuitionAmount2(e.target.value)} />
-                        </div>
-                      )}
-                    </div>
-                    {tuitionPlan === "分割（2期）" && (
-                      <div className="mb-2">
-                        <label className="block text-xs text-blue-700 mb-1">第2期締切日</label>
-                        <input type="date" className="form-input text-xs" value={tuitionDeadline2} onChange={(e) => setTuitionDeadline2(e.target.value)} />
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-xs text-blue-700 mb-1">振込先情報（学生に表示）</label>
-                      <textarea className="form-input text-xs min-h-[70px] resize-y" placeholder={"銀行名：〇〇銀行 〇〇支店\n口座種別：普通\n口座番号：1234567\n口座名義：〇〇学校法人"} value={tuitionBankInfo} onChange={(e) => setTuitionBankInfo(e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* STEP 2: 書類提出 */}
-                  <div className="p-3 rounded-xl border-2 border-purple-200 bg-purple-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-bold text-purple-800">STEP 2 · 📋 書類提出</p>
-                      <span className="text-xs text-purple-600">{docChecklist.filter(d => d.done).length}/{docChecklist.length} 確認済</span>
-                    </div>
-                    <div className="mb-2">
-                      <label className="block text-xs text-purple-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
-                      <input type="date" className="form-input text-xs" value={step2Deadline} onChange={(e) => setStep2Deadline(e.target.value)} />
-                    </div>
-                    <div className="space-y-1.5 mb-2">
-                      {docChecklist.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <input type="checkbox" checked={item.done} onChange={(e) => { const u = [...docChecklist]; u[i] = { ...item, done: e.target.checked }; setDocChecklist(u); }} className="rounded text-green-600 shrink-0" />
-                          <span className={`text-xs flex-1 ${item.done ? "line-through text-gray-400" : "text-gray-700"}`}>{item.name}</span>
-                          {item.required && <span className="text-xs text-red-400 shrink-0">必須</span>}
-                        </div>
-                      ))}
-                    </div>
-                    <button onClick={() => setDocChecklist([...docChecklist, { name: "", required: false, done: false }])} className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>書類を追加
-                    </button>
-                    {docChecklist.map((item, i) =>
-                      item.name === "" ? (
-                        <input key={`new-${i}`} type="text" className="form-input text-xs mt-1" placeholder="書類名を入力..." autoFocus
-                          onBlur={(e) => { const u = [...docChecklist]; if (e.target.value.trim()) { u[i] = { ...item, name: e.target.value.trim() }; } else { u.splice(i, 1); } setDocChecklist(u); }} />
-                      ) : null
-                    )}
-                  </div>
-
-                  {/* STEP 3: 電子署名 */}
-                  <div className="p-3 rounded-xl border-2 border-green-200 bg-green-50">
-                    <p className="text-xs font-bold text-green-800 mb-2">STEP 3 · ✍️ 入学誓約書への電子署名</p>
-                    <div>
-                      <label className="block text-xs text-green-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
-                      <input type="date" className="form-input text-xs" value={step3Deadline} onChange={(e) => setStep3Deadline(e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* その他（ビザ・寮） */}
-                  <div className="p-3 rounded-xl border border-gray-200 bg-gray-50">
-                    <p className="text-xs font-bold text-gray-700 mb-3">🛂 その他管理情報</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">ビザ・在留資格</label>
-                        <select className="form-input text-xs" value={visaStatus} onChange={(e) => setVisaStatus(e.target.value)}>
-                          <option value="未申請">未申請</option>
-                          <option value="申請中">申請中</option>
-                          <option value="取得済">取得済</option>
-                          <option value="不要">不要（在日者）</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">寮申請</label>
-                        <select className="form-input text-xs" value={dormStatus} onChange={(e) => setDormStatus(e.target.value)}>
-                          <option value="未申請">未申請</option>
-                          <option value="申請済">申請済</option>
-                          <option value="確定">確定</option>
-                          <option value="キャンセル">キャンセル</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 学生への案内文 */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">学生への追加案内文（任意）</label>
-                    <textarea className="form-input text-xs min-h-[80px] resize-y" placeholder="振込の注意事項・持ち物など追加情報があれば記入してください" value={enrollInstructions} onChange={(e) => setEnrollInstructions(e.target.value)} />
-                  </div>
-
-                  {/* 内部メモ */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">内部メモ（学生には非表示）</label>
-                    <textarea className="form-input text-xs min-h-[50px] resize-y" placeholder="担当者間の引継ぎメモなど" value={enrollAdminNote} onChange={(e) => setEnrollAdminNote(e.target.value)} />
-                  </div>
-                </div>
-
-                {/* 保存ボタン */}
-                <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-                  <button
-                    onClick={() => handleEnrollSave(false)}
-                    disabled={enrollSaving}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    保存（非公開）
-                  </button>
-                  <button
-                    onClick={() => handleEnrollSave(true)}
-                    disabled={enrollSaving}
-                    className="flex-1 btn-primary text-xs"
-                  >
-                    {enrollSaving ? "処理中..." : enrollSaved ? (
-                      <span className="flex items-center justify-center gap-1">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        保存済み
-                      </span>
-                    ) : "保存して学生に公開"}
-                  </button>
-                </div>
+              </div>
+            ) : (
+              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-500">✍️ 電子署名：未署名</p>
               </div>
             )}
 
-            {/* 学校承認・入学許可書・入学式・ビザ案内 */}
-            {(application.status === "合格" || application.status === "補欠合格") &&
-              application.enrollmentProcedure?.status === "完了" && (
-              <div className="card border-l-4 border-emerald-500">
-                <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-wide mb-4">
-                  🏫 入学後フロー管理
-                </h3>
-
-                {/* STEP A: 学校承認 → 入学許可書発行 */}
-                <div className={`p-3 rounded-xl border-2 mb-3 ${application.enrollmentProcedure.schoolConfirmed ? "border-green-300 bg-green-50" : "border-emerald-300 bg-emerald-50"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-emerald-800">① 学校承認 → 入学許可書発行</p>
-                    {application.enrollmentProcedure.schoolConfirmed && (
-                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 発行済み</span>
-                    )}
+            {/* 入学手続き提出書類 */}
+            {(() => {
+              const enrollDocs = application.documents.filter(d => d.docType.startsWith("入学手続き_"));
+              return enrollDocs.length > 0 ? (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs font-bold text-blue-800 mb-2">📁 入学手続き提出書類（{enrollDocs.length}件）</p>
+                  <div className="space-y-1.5">
+                    {enrollDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between bg-white rounded-lg px-2 py-1.5">
+                        <div>
+                          <p className="text-xs font-medium text-gray-700">{doc.docType.replace("入学手続き_", "")}</p>
+                          <p className="text-xs text-gray-400">{doc.originalName}</p>
+                        </div>
+                        <a
+                          href={doc.filePath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-navy-600 hover:text-navy-800 font-medium border border-navy-200 px-2 py-1 rounded"
+                        >
+                          開く
+                        </a>
+                      </div>
+                    ))}
                   </div>
-                  {application.enrollmentProcedure.schoolConfirmed ? (
-                    <p className="text-xs text-green-700">
-                      承認日時：{application.enrollmentProcedure.schoolConfirmedAt
-                        ? new Date(application.enrollmentProcedure.schoolConfirmedAt).toLocaleString("ja-JP")
-                        : "—"}
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-xs text-emerald-700 mb-2">学生の手続き書類を確認後、入学許可書を発行します。</p>
-                      <button
-                        onClick={async () => {
-                          setConfirmSaving(true);
-                          try {
-                            const res = await fetch("/api/enrollment/confirm", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                applicationId: application.id,
-                                action: "confirm",
-                              }),
-                            });
-                            if (res.ok) {
-                              window.location.reload();
-                            }
-                          } finally {
-                            setConfirmSaving(false);
-                          }
-                        }}
-                        disabled={confirmSaving}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {confirmSaving ? "処理中..." : "✅ 学校承認・入学許可書を発行する"}
-                      </button>
-                    </>
+                </div>
+              ) : (
+                <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500">📁 入学手続き書類：未提出</p>
+                </div>
+              );
+            })()}
+
+            {/* 学生からのメモ */}
+            {enrollStudentMemo && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs font-bold text-amber-800 mb-1">📩 学生からの報告</p>
+                <p className="text-sm text-amber-900 whitespace-pre-wrap">{enrollStudentMemo}</p>
+                {enrollCompletedAt && (
+                  <p className="text-xs text-amber-600 mt-1">完了報告日：{formatDateTimeJP(enrollCompletedAt)}</p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-4">
+
+              {/* STEP 1: 学費納入 */}
+              <div className="p-3 rounded-xl border-2 border-blue-200 bg-blue-50">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-blue-800">STEP 1 · 💴 学費納入</p>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={tuitionPaid} onChange={(e) => setTuitionPaid(e.target.checked)} className="rounded text-green-600" />
+                    <span className={`text-xs font-medium ${tuitionPaid ? "text-green-600" : "text-gray-400"}`}>{tuitionPaid ? "✅ 納入確認済み" : "未確認"}</span>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs text-blue-700 mb-1 font-medium">支払いプラン</label>
+                    <select className="form-input text-xs" value={tuitionPlan} onChange={(e) => setTuitionPlan(e.target.value)}>
+                      <option value="全額">全額一括</option>
+                      <option value="分割（2期）">分割（2期）</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-blue-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
+                    <input type="date" className="form-input text-xs" value={step1Deadline} onChange={(e) => setStep1Deadline(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs text-blue-700 mb-1">{tuitionPlan === "分割（2期）" ? "第1期金額" : "金額"}</label>
+                    <input type="text" className="form-input text-xs" placeholder="例：350,000円" value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} />
+                  </div>
+                  {tuitionPlan === "分割（2期）" && (
+                    <div>
+                      <label className="block text-xs text-blue-700 mb-1">第2期金額</label>
+                      <input type="text" className="form-input text-xs" placeholder="例：200,000円" value={tuitionAmount2} onChange={(e) => setTuitionAmount2(e.target.value)} />
+                    </div>
                   )}
                 </div>
-
-                {/* STEP B: 入学式通知 */}
-                {application.enrollmentProcedure.schoolConfirmed && (
-                  <div className={`p-3 rounded-xl border-2 mb-3 ${application.enrollmentProcedure.ceremonyNotified ? "border-green-300 bg-green-50" : "border-blue-300 bg-blue-50"}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-bold text-blue-800">② 入学式のご案内</p>
-                      {application.enrollmentProcedure.ceremonyNotified && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 通知済み</span>
-                      )}
-                    </div>
-                    {!application.enrollmentProcedure.ceremonyNotified && (
-                      <>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <label className="block text-xs text-blue-700 mb-1">入学式日付</label>
-                            <input type="date" className="form-input text-xs" value={ceremonyDate} onChange={(e) => setCeremonyDate(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-blue-700 mb-1">会場</label>
-                            <input type="text" className="form-input text-xs" placeholder="〇〇ホール" value={ceremonyPlace} onChange={(e) => setCeremonyPlace(e.target.value)} />
-                          </div>
-                        </div>
-                        <textarea className="form-input text-xs min-h-[50px] resize-y mb-2" placeholder="持ち物・服装・集合時間など" value={ceremonyNotes} onChange={(e) => setCeremonyNotes(e.target.value)} />
-                        <button
-                          onClick={async () => {
-                            setConfirmSaving(true);
-                            try {
-                              const res = await fetch("/api/enrollment/confirm", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ applicationId: application.id, action: "notify_ceremony", ceremonyDate, ceremonyPlace, ceremonyNotes }),
-                              });
-                              if (res.ok) window.location.reload();
-                            } finally { setConfirmSaving(false); }
-                          }}
-                          disabled={confirmSaving || !ceremonyDate}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {confirmSaving ? "処理中..." : "🎌 入学式案内を通知する"}
-                        </button>
-                      </>
-                    )}
-                    {application.enrollmentProcedure.ceremonyNotified && application.enrollmentProcedure.ceremonyDate && (
-                      <p className="text-xs text-green-700">日程：{application.enrollmentProcedure.ceremonyDate}　{application.enrollmentProcedure.ceremonyPlace || ""}</p>
-                    )}
+                {tuitionPlan === "分割（2期）" && (
+                  <div className="mb-2">
+                    <label className="block text-xs text-blue-700 mb-1">第2期締切日</label>
+                    <input type="date" className="form-input text-xs" value={tuitionDeadline2} onChange={(e) => setTuitionDeadline2(e.target.value)} />
                   </div>
                 )}
+                <div>
+                  <label className="block text-xs text-blue-700 mb-1">振込先情報（学生に表示）</label>
+                  <textarea className="form-input text-xs min-h-[70px] resize-y" placeholder={"銀行名：〇〇銀行 〇〇支店\n口座種別：普通\n口座番号：1234567\n口座名義：〇〇学校法人"} value={tuitionBankInfo} onChange={(e) => setTuitionBankInfo(e.target.value)} />
+                </div>
+              </div>
 
-                {/* STEP C: ビザ更新案内 */}
-                {application.enrollmentProcedure.schoolConfirmed && (
-                  <div className={`p-3 rounded-xl border-2 ${application.enrollmentProcedure.visaGuideNotified ? "border-green-300 bg-green-50" : "border-purple-300 bg-purple-50"}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-bold text-purple-800">③ ビザ更新手続き案内</p>
-                      {application.enrollmentProcedure.visaGuideNotified && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 通知済み</span>
-                      )}
+              {/* STEP 2: 書類提出 */}
+              <div className="p-3 rounded-xl border-2 border-purple-200 bg-purple-50">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-purple-800">STEP 2 · 📋 書類提出</p>
+                  <span className="text-xs text-purple-600">{docChecklist.filter(d => d.done).length}/{docChecklist.length} 確認済</span>
+                </div>
+                <div className="mb-2">
+                  <label className="block text-xs text-purple-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
+                  <input type="date" className="form-input text-xs" value={step2Deadline} onChange={(e) => setStep2Deadline(e.target.value)} />
+                </div>
+                <div className="space-y-1.5 mb-2">
+                  {docChecklist.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input type="checkbox" checked={item.done} onChange={(e) => { const u = [...docChecklist]; u[i] = { ...item, done: e.target.checked }; setDocChecklist(u); }} className="rounded text-green-600 shrink-0" />
+                      <span className={`text-xs flex-1 ${item.done ? "line-through text-gray-400" : "text-gray-700"}`}>{item.name}</span>
+                      {item.required && <span className="text-xs text-red-400 shrink-0">必須</span>}
                     </div>
-                    {!application.enrollmentProcedure.visaGuideNotified && (
-                      <>
-                        <textarea className="form-input text-xs min-h-[60px] resize-y mb-2" placeholder="在留資格更新・COE申請の案内内容" value={visaGuideNotes} onChange={(e) => setVisaGuideNotes(e.target.value)} />
-                        <button
-                          onClick={async () => {
-                            setConfirmSaving(true);
-                            try {
-                              const res = await fetch("/api/enrollment/confirm", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ applicationId: application.id, action: "notify_visa", visaGuideNotes }),
-                              });
-                              if (res.ok) window.location.reload();
-                            } finally { setConfirmSaving(false); }
-                          }}
-                          disabled={confirmSaving}
-                          className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {confirmSaving ? "処理中..." : "🛂 ビザ更新案内を通知する"}
-                        </button>
-                      </>
-                    )}
-                    {application.enrollmentProcedure.visaGuideNotified && (
-                      <p className="text-xs text-green-700">{application.enrollmentProcedure.visaGuideNotes || "案内済み"}</p>
-                    )}
+                  ))}
+                </div>
+                <button onClick={() => setDocChecklist([...docChecklist, { name: "", required: false, done: false }])} className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>書類を追加
+                </button>
+                {docChecklist.map((item, i) =>
+                  item.name === "" ? (
+                    <input key={`new-${i}`} type="text" className="form-input text-xs mt-1" placeholder="書類名を入力..." autoFocus
+                      onBlur={(e) => { const u = [...docChecklist]; if (e.target.value.trim()) { u[i] = { ...item, name: e.target.value.trim() }; } else { u.splice(i, 1); } setDocChecklist(u); }} />
+                  ) : null
+                )}
+              </div>
+
+              {/* STEP 3: 電子署名 */}
+              <div className="p-3 rounded-xl border-2 border-green-200 bg-green-50">
+                <p className="text-xs font-bold text-green-800 mb-2">STEP 3 · ✍️ 入学誓約書への電子署名</p>
+                <div>
+                  <label className="block text-xs text-green-700 mb-1 font-medium">締切日 <span className="text-red-400">*</span></label>
+                  <input type="date" className="form-input text-xs" value={step3Deadline} onChange={(e) => setStep3Deadline(e.target.value)} />
+                </div>
+              </div>
+
+              {/* その他（ビザ・寮） */}
+              <div className="p-3 rounded-xl border border-gray-200 bg-gray-50">
+                <p className="text-xs font-bold text-gray-700 mb-3">🛂 その他管理情報</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">ビザ・在留資格</label>
+                    <select className="form-input text-xs" value={visaStatus} onChange={(e) => setVisaStatus(e.target.value)}>
+                      <option value="未申請">未申請</option>
+                      <option value="申請中">申請中</option>
+                      <option value="取得済">取得済</option>
+                      <option value="不要">不要（在日者）</option>
+                    </select>
                   </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">寮申請</label>
+                    <select className="form-input text-xs" value={dormStatus} onChange={(e) => setDormStatus(e.target.value)}>
+                      <option value="未申請">未申請</option>
+                      <option value="申請済">申請済</option>
+                      <option value="確定">確定</option>
+                      <option value="キャンセル">キャンセル</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 学生への案内文 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">学生への追加案内文（任意）</label>
+                <textarea className="form-input text-xs min-h-[80px] resize-y" placeholder="振込の注意事項・持ち物など追加情報があれば記入してください" value={enrollInstructions} onChange={(e) => setEnrollInstructions(e.target.value)} />
+              </div>
+
+              {/* 内部メモ */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">内部メモ（学生には非表示）</label>
+                <textarea className="form-input text-xs min-h-[50px] resize-y" placeholder="担当者間の引継ぎメモなど" value={enrollAdminNote} onChange={(e) => setEnrollAdminNote(e.target.value)} />
+              </div>
+            </div>
+
+            {/* 保存ボタン */}
+            <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => handleEnrollSave(false)}
+                disabled={enrollSaving}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                保存（非公開）
+              </button>
+              <button
+                onClick={() => handleEnrollSave(true)}
+                disabled={enrollSaving}
+                className="flex-1 btn-primary text-xs"
+              >
+                {enrollSaving ? "処理中..." : enrollSaved ? (
+                  <span className="flex items-center justify-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    保存済み
+                  </span>
+                ) : "保存して学生に公開"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 学校承認・入学許可書・入学式・ビザ案内 */}
+        {(application.status === "合格" || application.status === "補欠合格") &&
+          application.enrollmentProcedure?.status === "完了" && (
+          <div className="card border-l-4 border-emerald-500">
+            <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-wide mb-4">
+              🏫 入学後フロー管理
+            </h3>
+
+            {/* STEP A: 学校承認 → 入学許可書発行 */}
+            <div className={`p-3 rounded-xl border-2 mb-3 ${application.enrollmentProcedure.schoolConfirmed ? "border-green-300 bg-green-50" : "border-emerald-300 bg-emerald-50"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-emerald-800">① 学校承認 → 入学許可書発行</p>
+                {application.enrollmentProcedure.schoolConfirmed && (
+                  <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 発行済み</span>
+                )}
+              </div>
+              {application.enrollmentProcedure.schoolConfirmed ? (
+                <p className="text-xs text-green-700">
+                  承認日時：{application.enrollmentProcedure.schoolConfirmedAt
+                    ? new Date(application.enrollmentProcedure.schoolConfirmedAt).toLocaleString("ja-JP")
+                    : "—"}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-emerald-700 mb-2">学生の手続き書類を確認後、入学許可書を発行します。</p>
+                  <button
+                    onClick={async () => {
+                      setConfirmSaving(true);
+                      try {
+                        const res = await fetch("/api/enrollment/confirm", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            applicationId: application.id,
+                            action: "confirm",
+                          }),
+                        });
+                        if (res.ok) {
+                          window.location.reload();
+                        }
+                      } finally {
+                        setConfirmSaving(false);
+                      }
+                    }}
+                    disabled={confirmSaving}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {confirmSaving ? "処理中..." : "✅ 学校承認・入学許可書を発行する"}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* STEP B: 入学式通知 */}
+            {application.enrollmentProcedure.schoolConfirmed && (
+              <div className={`p-3 rounded-xl border-2 mb-3 ${application.enrollmentProcedure.ceremonyNotified ? "border-green-300 bg-green-50" : "border-blue-300 bg-blue-50"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-blue-800">② 入学式のご案内</p>
+                  {application.enrollmentProcedure.ceremonyNotified && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 通知済み</span>
+                  )}
+                </div>
+                {!application.enrollmentProcedure.ceremonyNotified && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <label className="block text-xs text-blue-700 mb-1">入学式日付</label>
+                        <input type="date" className="form-input text-xs" value={ceremonyDate} onChange={(e) => setCeremonyDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-blue-700 mb-1">会場</label>
+                        <input type="text" className="form-input text-xs" placeholder="〇〇ホール" value={ceremonyPlace} onChange={(e) => setCeremonyPlace(e.target.value)} />
+                      </div>
+                    </div>
+                    <textarea className="form-input text-xs min-h-[50px] resize-y mb-2" placeholder="持ち物・服装・集合時間など" value={ceremonyNotes} onChange={(e) => setCeremonyNotes(e.target.value)} />
+                    <button
+                      onClick={async () => {
+                        setConfirmSaving(true);
+                        try {
+                          const res = await fetch("/api/enrollment/confirm", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ applicationId: application.id, action: "notify_ceremony", ceremonyDate, ceremonyPlace, ceremonyNotes }),
+                          });
+                          if (res.ok) window.location.reload();
+                        } finally { setConfirmSaving(false); }
+                      }}
+                      disabled={confirmSaving || !ceremonyDate}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {confirmSaving ? "処理中..." : "🎌 入学式案内を通知する"}
+                    </button>
+                  </>
+                )}
+                {application.enrollmentProcedure.ceremonyNotified && application.enrollmentProcedure.ceremonyDate && (
+                  <p className="text-xs text-green-700">日程：{application.enrollmentProcedure.ceremonyDate}　{application.enrollmentProcedure.ceremonyPlace || ""}</p>
                 )}
               </div>
             )}
-            </div>{/* end enrollment tab */}
 
-            {/* 管理メモ・メモ履歴 - 常時表示 */}
-            <div className="card">
+            {/* STEP C: ビザ更新案内 */}
+            {application.enrollmentProcedure.schoolConfirmed && (
+              <div className={`p-3 rounded-xl border-2 ${application.enrollmentProcedure.visaGuideNotified ? "border-green-300 bg-green-50" : "border-purple-300 bg-purple-50"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-purple-800">③ ビザ更新手続き案内</p>
+                  {application.enrollmentProcedure.visaGuideNotified && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">✓ 通知済み</span>
+                  )}
+                </div>
+                {!application.enrollmentProcedure.visaGuideNotified && (
+                  <>
+                    <textarea className="form-input text-xs min-h-[60px] resize-y mb-2" placeholder="在留資格更新・COE申請の案内内容" value={visaGuideNotes} onChange={(e) => setVisaGuideNotes(e.target.value)} />
+                    <button
+                      onClick={async () => {
+                        setConfirmSaving(true);
+                        try {
+                          const res = await fetch("/api/enrollment/confirm", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ applicationId: application.id, action: "notify_visa", visaGuideNotes }),
+                          });
+                          if (res.ok) window.location.reload();
+                        } finally { setConfirmSaving(false); }
+                      }}
+                      disabled={confirmSaving}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {confirmSaving ? "処理中..." : "🛂 ビザ更新案内を通知する"}
+                    </button>
+                  </>
+                )}
+                {application.enrollmentProcedure.visaGuideNotified && (
+                  <p className="text-xs text-green-700">{application.enrollmentProcedure.visaGuideNotes || "案内済み"}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        </div>{/* end enrollment tab */}
+
+            {/* 管理メモ・メモ履歴 - 入学手続きタブ以外で表示 */}
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
               <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
                 管理メモ
               </h3>
@@ -2297,7 +2310,7 @@ export default function ApplicationDetailPage() {
             </div>
 
             {/* メモ履歴 */}
-            <div className="card">
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
               <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
                 コメント・メモ履歴
               </h3>
@@ -2337,7 +2350,7 @@ export default function ApplicationDetailPage() {
             </div>
 
             {/* 申請情報サマリー */}
-            <div className="card bg-gray-50">
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card bg-gray-50">
               <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">
                 申請情報
               </h3>
@@ -2361,6 +2374,8 @@ export default function ApplicationDetailPage() {
               </div>
             </div>
           </div>
+
+
 
 
         </div>
