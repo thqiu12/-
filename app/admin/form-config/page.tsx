@@ -430,17 +430,13 @@ export default function FormConfigPage() {
                               />
                             </td>
                             <td className="px-4 py-3 min-w-[160px]">
-                              {field.fieldType === "file" ? (
-                                <input
-                                  type="text"
-                                  value={field.description ?? ""}
-                                  onChange={e => updateField(field.fieldKey, "description", e.target.value)}
-                                  placeholder="ヒントテキスト（任意）"
-                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-navy-500"
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-300">—</span>
-                              )}
+                              <input
+                                type="text"
+                                value={field.description ?? ""}
+                                onChange={e => updateField(field.fieldKey, "description", e.target.value)}
+                                placeholder="ヒントテキスト（任意）"
+                                className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-navy-500"
+                              />
                             </td>
                             <td className="px-4 py-3">
                               <select
@@ -601,21 +597,19 @@ export default function FormConfigPage() {
                   <span className="text-sm font-medium text-gray-700">必須フィールドにする</span>
                 </label>
               </div>
-              {addForm.fieldType === "file" && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    説明・ヒントテキスト（任意）
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.description}
-                    onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="例：原本または公証済みコピーをアップロードしてください"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">ファイルフィールドのラベル下に表示されるヒントテキスト</p>
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  説明・ヒントテキスト（任意）
+                </label>
+                <input
+                  type="text"
+                  value={addForm.description}
+                  onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="例：入力例やヒントを記入してください"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">フィールドのラベル下に表示されるヒントテキスト</p>
+              </div>
               {addError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                   {addError}

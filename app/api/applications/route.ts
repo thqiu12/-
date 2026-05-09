@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
 
     const agentId = searchParams.get("agentId");
     const cohortId = searchParams.get("cohortId");
+    const todayOnly = searchParams.get("todayOnly") === "1";
 
     const where: Record<string, unknown> = {};
     if (status && status !== "all") where.status = status;
@@ -201,6 +202,11 @@ export async function GET(request: NextRequest) {
     else if (agentId && agentId !== "all") where.agentId = agentId;
     if (cohortId === "none") where.cohortId = null;
     else if (cohortId && cohortId !== "all") where.cohortId = cohortId;
+    if (todayOnly) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      where.createdAt = { gte: todayStart };
+    }
     if (search) {
       where.OR = [
         { lastName: { contains: search } },

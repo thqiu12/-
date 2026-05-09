@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getStatusStyle, getJapaneseLevelStyle, formatDateTimeJP } from "@/lib/utils";
 
 const STATUSES = ["all", "受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留"];
 const JAPANESE_LEVELS = ["all", "N1", "N2", "N3", "N4", "N5", "なし"];
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 interface Agent { id: string; name: string; country: string; isActive: boolean; }
 interface Cohort { id: string; name: string; status: string; }
@@ -61,6 +62,19 @@ interface PaginatedResponse {
   totalPages: number;
 }
 
+interface GlobalStats {
+  total: number;
+  statusCounts: Record<string, number>;
+  todayCount: number;
+  enrollmentStats: {
+    announced: number;
+    step1Waiting: number;
+    step2Waiting: number;
+    schoolConfirmWaiting: number;
+    admitLetterIssued: number;
+  };
+}
+
 // 手続き進捗ステップを計算する
 function getEnrollmentStep(ep: EnrollmentSummary): { label: string; style: string } {
   if (ep.admitLetterIssued) return { label: "📜 許可書発行済", style: "bg-purple-100 text-purple-800" };
@@ -73,7 +87,6 @@ function getEnrollmentStep(ep: EnrollmentSummary): { label: string; style: strin
   return { label: "⏳ 手続き中", style: "bg-gray-100 text-gray-600" };
 }
 
-// ロールCookie読み取りヘルパー
 function getCookie(name: string): string {
   if (typeof document === "undefined") return "";
   const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -109,38 +122,70 @@ function UserBadge() {
   );
 }
 
+// 列の表示/非表示定義
+const COLUMN_DEFS = [
+  { key: "applicationNo", label: "申請番号", default: true, required: true },
+  { key: "name",          label: "氏名",     default: true, required: true },
+  { key: "nationality",   label: "国籍",     default: true },
+  { key: "japaneseLevel", label: "日本語",   default: true },
+  { key: "lastSchool",    label: "出身校",   default: false },
+  { key: "schools",       label: "志望校",   default: true },
+  { key: "enrollment",    label: "入学希望", default: true },
+  { key: "documents",     label: "書類",     default: true },
+  { key: "cohort",        label: "選考",     default: true },
+  { key: "agent",         label: "エージェント", default: false },
+  { key: "examFee",       label: "選考費",   default: false },
+  { key: "status",        label: "状態",     default: true, required: true },
+  { key: "createdAt",     label: "申請日",   default: true },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [data, setData] = useState<PaginatedResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [cohortFilter, setCohortFilter] = useState("all");
+  const [todayOnly, setTodayOnly] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
-
-  // 入学手続き進捗サマリー
-  const [enrollmentStats, setEnrollmentStats] = useState<{
-    announced: number;
-    step1Waiting: number;
-    step2Waiting: number;
-    schoolConfirmWaiting: number;
-    admitLetterIssued: number;
-  } | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 定員サマリー
   const [quotaSummary, setQuotaSummary] = useState<{ totalQuota: number; totalAccepted: number; totalRemaining: number; year: string } | null>(null);
 
+  // 列表示設定
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.default]))
+  );
+  const [showColMenu, setShowColMenu] = useState(false);
+  const colMenuRef = useRef<HTMLDivElement>(null);
+
+  // 列メニューの外クリックで閉じる
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) {
+        setShowColMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // 初期データ取得
   useEffect(() => {
     fetch("/api/agents").then(r => r.json()).then(d => setAgents(Array.isArray(d) ? d : (d.agents || [])));
     fetch("/api/cohorts").then(r => r.json()).then(d => Array.isArray(d) && setCohorts(d));
-    // 定員サマリー（翌年度）
+    // 定員サマリー
     const nextYear = String(new Date().getFullYear() + 1);
     fetch("/api/admin/quota").then(r => r.json()).then(rows => {
       if (!Array.isArray(rows)) return;
@@ -150,50 +195,47 @@ export default function AdminDashboard() {
       const totalRemaining = filtered.reduce((s: number, r: { remaining: number }) => s + Math.max(r.remaining, 0), 0);
       setQuotaSummary({ totalQuota, totalAccepted, totalRemaining, year: nextYear });
     });
+    // グローバル統計（全量）
+    fetch("/api/applications/stats").then(r => r.json()).then(d => setGlobalStats(d));
   }, []);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (levelFilter !== "all") params.set("japaneseLevel", levelFilter);
       if (agentFilter !== "all") params.set("agentId", agentFilter);
       if (cohortFilter !== "all") params.set("cohortId", cohortFilter);
       if (search) params.set("search", search);
+      if (todayOnly) params.set("todayOnly", "1");
 
       const res = await fetch(`/api/applications?${params}`);
-      if (res.status === 401) {
-        router.push("/admin");
-        return;
-      }
+      if (res.status === 401) { router.push("/admin"); return; }
       if (!res.ok) throw new Error("取得に失敗しました");
       const json = await res.json();
       setData(json);
-
-      // 入学手続き進捗を集計（合格/補欠合格のみ）
-      const passedApps: Application[] = json.applications.filter(
-        (a: Application) => a.status === "合格" || a.status === "補欠合格"
-      );
-      const stats = {
-        announced: passedApps.filter(a => a.enrollmentProcedure && !a.enrollmentProcedure.schoolConfirmed && !a.enrollmentProcedure.admitLetterIssued).length,
-        step1Waiting: passedApps.filter(a => a.enrollmentProcedure?.status === "案内済み").length,
-        step2Waiting: passedApps.filter(a => a.enrollmentProcedure?.status === "STEP1完了").length,
-        schoolConfirmWaiting: passedApps.filter(a => a.enrollmentProcedure?.schoolConfirmed === false && (a.enrollmentProcedure?.status === "STEP2完了" || a.enrollmentProcedure?.status === "STEP3完了" || a.enrollmentProcedure?.status === "完了")).length,
-        admitLetterIssued: passedApps.filter(a => a.enrollmentProcedure?.admitLetterIssued).length,
-      };
-      setEnrollmentStats(stats);
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, levelFilter, agentFilter, cohortFilter, search, router]);
+  }, [page, pageSize, statusFilter, levelFilter, agentFilter, cohortFilter, search, todayOnly, router]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
+
+  // 検索デバウンス
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearch(val);
+      setPage(1);
+    }, 400);
+  };
 
   const handleLogout = async () => {
     await fetch("/api/admin/login", { method: "DELETE" });
@@ -206,18 +248,7 @@ export default function AdminDashboard() {
     window.open(`/api/applications/export?${params}`, "_blank");
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    fetchApplications();
-  };
-
-  const statusCounts = data?.applications
-    ? STATUSES.slice(1).reduce((acc, s) => {
-        acc[s] = data.applications.filter((a) => a.status === s).length;
-        return acc;
-      }, {} as Record<string, number>)
-    : {};
+  const col = (key: string) => visibleCols[key] !== false;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -234,35 +265,20 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-1 justify-end">
-            {/* ===== 出願管理セクション ===== */}
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
               <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">📋 出願</span>
-              <Link href="/admin/cohorts" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                選考管理
-              </Link>
-              <Link href="/admin/announcements" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                お知らせ
-              </Link>
-              <Link href="/admin/agents" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                エージェント
-              </Link>
+              <Link href="/admin/cohorts" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">選考管理</Link>
+              <Link href="/admin/announcements" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">お知らせ</Link>
+              <Link href="/admin/agents" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">エージェント</Link>
             </div>
-            {/* ===== 在籍管理セクション ===== */}
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
               <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">🎓 在籍</span>
-              <Link href="/admin/students" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                在籍管理
-              </Link>
+              <Link href="/admin/students" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">在籍管理</Link>
             </div>
-            {/* ===== システム管理セクション ===== */}
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
               <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">⚙️ 管理</span>
-              <Link href="/admin/quota" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                定員管理
-              </Link>
-              <Link href="/admin/form-config" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
-                フォーム管理
-              </Link>
+              <Link href="/admin/quota" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">定員管理</Link>
+              <Link href="/admin/form-config" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">フォーム管理</Link>
               <AccountManagementLink />
             </div>
             <UserBadge />
@@ -279,32 +295,43 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <main className="max-w-screen-2xl mx-auto px-4 py-6">
+
+        {/* ===== Stats カード（全量データ） ===== */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 mb-6">
+          {/* 全申請 */}
           <div
-            className={`card cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-navy-600" : ""}`}
-            onClick={() => { setStatusFilter("all"); setPage(1); }}
+            className={`card cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" && !todayOnly ? "ring-2 ring-navy-600" : ""}`}
+            onClick={() => { setStatusFilter("all"); setTodayOnly(false); setPage(1); }}
           >
             <p className="text-xs text-gray-500 mb-1">全申請</p>
-            <p className="text-2xl font-bold text-navy-800">{data?.total ?? "—"}</p>
+            <p className="text-2xl font-bold text-navy-800">{globalStats?.total ?? "—"}</p>
           </div>
+          {/* 今日 */}
+          <div
+            className={`card cursor-pointer transition-all hover:shadow-md ${todayOnly ? "ring-2 ring-orange-400" : ""}`}
+            onClick={() => { setTodayOnly(v => !v); setPage(1); }}
+          >
+            <p className="text-xs text-gray-500 mb-1">📅 今日</p>
+            <p className="text-2xl font-bold text-orange-500">{globalStats?.todayCount ?? "—"}</p>
+          </div>
+          {/* ステータス別 */}
           {STATUSES.slice(1).map((s) => (
             <div
               key={s}
-              className={`card cursor-pointer transition-all hover:shadow-md ${statusFilter === s ? "ring-2 ring-navy-600" : ""}`}
-              onClick={() => { setStatusFilter(s); setPage(1); }}
+              className={`card cursor-pointer transition-all hover:shadow-md ${statusFilter === s && !todayOnly ? "ring-2 ring-navy-600" : ""}`}
+              onClick={() => { setStatusFilter(s); setTodayOnly(false); setPage(1); }}
             >
               <p className="text-xs text-gray-500 mb-1">{s}</p>
               <p className="text-2xl font-bold text-navy-800">
-                {statusCounts[s] ?? 0}
+                {globalStats?.statusCounts[s] ?? 0}
               </p>
               <span className={`status-badge mt-1 ${getStatusStyle(s)}`}>{s}</span>
             </div>
           ))}
         </div>
 
-        {/* 定員サマリー */}
+        {/* ===== 定員サマリー ===== */}
         {quotaSummary && quotaSummary.totalQuota > 0 && (
           <div className="card mb-4">
             <div className="flex items-center justify-between mb-3">
@@ -329,7 +356,6 @@ export default function AdminDashboard() {
                 {quotaSummary.totalRemaining <= 5 && <p className="text-xs text-red-500 font-semibold">残り僅か！</p>}
               </div>
             </div>
-            {/* 充足バー */}
             <div className="mt-3">
               <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>充足率</span>
@@ -345,124 +371,154 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 入学手続き進捗サマリー */}
-        {enrollmentStats && (enrollmentStats.announced + enrollmentStats.step1Waiting + enrollmentStats.step2Waiting + enrollmentStats.schoolConfirmWaiting + enrollmentStats.admitLetterIssued) > 0 && (
-          <div className="card mb-6">
-            <h3 className="text-sm font-bold text-navy-700 mb-3">入学手続き進捗</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-sky-600 mb-1">手続き案内済み</p>
-                <p className="text-xl font-bold text-sky-800">{enrollmentStats.announced}件</p>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-blue-600 mb-1">💴 学費振込待ち</p>
-                <p className="text-xl font-bold text-blue-800">{enrollmentStats.step1Waiting}件</p>
-              </div>
-              <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-cyan-600 mb-1">📄 書類提出待ち</p>
-                <p className="text-xl font-bold text-cyan-800">{enrollmentStats.step2Waiting}件</p>
-              </div>
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-indigo-600 mb-1">学校承認待ち</p>
-                <p className="text-xl font-bold text-indigo-800">{enrollmentStats.schoolConfirmWaiting}件</p>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-purple-600 mb-1">許可書発行済み</p>
-                <p className="text-xl font-bold text-purple-800">{enrollmentStats.admitLetterIssued}件</p>
+        {/* ===== 入学手続き進捗（全量） ===== */}
+        {globalStats?.enrollmentStats && (() => {
+          const es = globalStats.enrollmentStats;
+          const total = es.announced + es.step1Waiting + es.step2Waiting + es.schoolConfirmWaiting + es.admitLetterIssued;
+          if (total === 0) return null;
+          return (
+            <div className="card mb-6">
+              <h3 className="text-sm font-bold text-navy-700 mb-3">入学手続き進捗（全合格者）</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-sky-600 mb-1">手続き案内済み</p>
+                  <p className="text-xl font-bold text-sky-800">{es.announced}件</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-blue-600 mb-1">💴 学費振込待ち</p>
+                  <p className="text-xl font-bold text-blue-800">{es.step1Waiting}件</p>
+                </div>
+                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-cyan-600 mb-1">📄 書類提出待ち</p>
+                  <p className="text-xl font-bold text-cyan-800">{es.step2Waiting}件</p>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-indigo-600 mb-1">学校承認待ち</p>
+                  <p className="text-xl font-bold text-indigo-800">{es.schoolConfirmWaiting}件</p>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-purple-600 mb-1">許可書発行済み</p>
+                  <p className="text-xl font-bold text-purple-800">{es.admitLetterIssued}件</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
-        {/* Filters & Search */}
+        {/* ===== フィルター & 検索 ===== */}
         <div className="card mb-4">
-          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-            {/* Search */}
-            <form onSubmit={handleSearchSubmit} className="flex-1 min-w-48">
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  className="form-input pl-9"
-                  placeholder="氏名・申請番号・メールで検索..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </form>
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap items-center">
+            {/* 検索（デバウンス） */}
+            <div className="flex-1 min-w-48 relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                className="form-input pl-9 w-full"
+                placeholder="氏名・申請番号・メールで検索..."
+                value={searchInput}
+                onChange={e => handleSearchChange(e.target.value)}
+              />
+            </div>
 
-            {/* Status Filter */}
-            <select
-              className="form-input w-full sm:w-40"
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            {/* 今日のみ */}
+            <button
+              onClick={() => { setTodayOnly(v => !v); setPage(1); }}
+              className={`px-3 py-2 text-sm font-semibold rounded-lg border transition whitespace-nowrap ${todayOnly ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-300 hover:bg-orange-50"}`}
             >
+              📅 今日のみ
+            </button>
+
+            {/* ステータス */}
+            <select className="form-input w-full sm:w-40" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
               <option value="all">全ての状態</option>
-              {STATUSES.slice(1).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              {STATUSES.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
 
-            {/* Level Filter */}
-            <select
-              className="form-input w-full sm:w-36"
-              value={levelFilter}
-              onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }}
-            >
+            {/* 日本語レベル */}
+            <select className="form-input w-full sm:w-36" value={levelFilter} onChange={e => { setLevelFilter(e.target.value); setPage(1); }}>
               <option value="all">全日本語レベル</option>
-              {JAPANESE_LEVELS.slice(1).map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
+              {JAPANESE_LEVELS.slice(1).map(l => <option key={l} value={l}>{l}</option>)}
             </select>
 
-            {/* Cohort Filter */}
-            <select
-              className="form-input w-full sm:w-44"
-              value={cohortFilter}
-              onChange={(e) => { setCohortFilter(e.target.value); setPage(1); }}
-            >
+            {/* 選考 */}
+            <select className="form-input w-full sm:w-44" value={cohortFilter} onChange={e => { setCohortFilter(e.target.value); setPage(1); }}>
               <option value="all">全選考</option>
               <option value="none">バッチ未設定</option>
-              {cohorts.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {cohorts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
 
-            {/* Agent Filter */}
-            <select
-              className="form-input w-full sm:w-44"
-              value={agentFilter}
-              onChange={(e) => { setAgentFilter(e.target.value); setPage(1); }}
-            >
+            {/* エージェント */}
+            <select className="form-input w-full sm:w-44" value={agentFilter} onChange={e => { setAgentFilter(e.target.value); setPage(1); }}>
               <option value="all">全エージェント</option>
               <option value="none">エージェントなし</option>
-              {agents.map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
 
-            {/* Export */}
-            <button
-              onClick={handleExport}
-              className="btn-secondary flex items-center gap-2 whitespace-nowrap"
-            >
+            {/* 列表示設定 */}
+            <div className="relative" ref={colMenuRef}>
+              <button
+                onClick={() => setShowColMenu(v => !v)}
+                className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition whitespace-nowrap flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                列
+              </button>
+              {showColMenu && (
+                <div className="absolute right-0 top-10 z-30 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-48">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">表示する列</p>
+                  {COLUMN_DEFS.filter(c => !c.required).map(c => (
+                    <label key={c.key} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-1">
+                      <input
+                        type="checkbox"
+                        checked={!!visibleCols[c.key]}
+                        onChange={e => setVisibleCols(prev => ({ ...prev, [c.key]: e.target.checked }))}
+                        className="accent-navy-700"
+                      />
+                      <span className="text-sm text-gray-700">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* CSV */}
+            <button onClick={handleExport} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              CSVエクスポート
+              CSV
             </button>
           </div>
+
+          {/* アクティブフィルター表示 */}
+          {(statusFilter !== "all" || levelFilter !== "all" || agentFilter !== "all" || cohortFilter !== "all" || todayOnly || search) && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+              <span className="text-xs text-gray-400 self-center">フィルター:</span>
+              {todayOnly && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">📅 今日のみ <button onClick={() => { setTodayOnly(false); setPage(1); }} className="ml-1 hover:text-orange-900">×</button></span>}
+              {statusFilter !== "all" && <span className="text-xs bg-navy-100 text-navy-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">{statusFilter} <button onClick={() => { setStatusFilter("all"); setPage(1); }} className="ml-1 hover:text-navy-900">×</button></span>}
+              {levelFilter !== "all" && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">{levelFilter} <button onClick={() => { setLevelFilter("all"); setPage(1); }} className="ml-1 hover:text-purple-900">×</button></span>}
+              {cohortFilter !== "all" && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">{cohorts.find(c => c.id === cohortFilter)?.name ?? cohortFilter} <button onClick={() => { setCohortFilter("all"); setPage(1); }} className="ml-1 hover:text-indigo-900">×</button></span>}
+              {agentFilter !== "all" && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">{agents.find(a => a.id === agentFilter)?.name ?? agentFilter} <button onClick={() => { setAgentFilter("all"); setPage(1); }} className="ml-1 hover:text-blue-900">×</button></span>}
+              {search && <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">"{search}" <button onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }} className="ml-1 hover:text-gray-900">×</button></span>}
+              <button
+                onClick={() => { setStatusFilter("all"); setLevelFilter("all"); setAgentFilter("all"); setCohortFilter("all"); setTodayOnly(false); setSearch(""); setSearchInput(""); setPage(1); }}
+                className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-0.5 rounded-full hover:bg-red-50 transition"
+              >
+                すべてクリア
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Table */}
+        {/* ===== テーブル ===== */}
         {error ? (
           <div className="card text-center py-8 text-red-600">
             <p>{error}</p>
-            <button onClick={fetchApplications} className="btn-primary mt-4">
-              再読み込み
-            </button>
+            <button onClick={fetchApplications} className="btn-primary mt-4">再読み込み</button>
           </div>
         ) : loading ? (
           <div className="card text-center py-16">
@@ -479,19 +535,19 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-navy-800 text-white">
                     <tr>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">申請番号</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">氏名</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">国籍</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">日本語</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">出身学校・出席率</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">志望校</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">入学希望</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">書類</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">選考</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">エージェント</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">選考費</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">状態</th>
-                      <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">申請日</th>
+                      {col("applicationNo") && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">申請番号</th>}
+                      {col("name")          && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">氏名</th>}
+                      {col("nationality")   && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">国籍</th>}
+                      {col("japaneseLevel") && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">日本語</th>}
+                      {col("lastSchool")    && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">出身校・出席率</th>}
+                      {col("schools")       && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">志望校</th>}
+                      {col("enrollment")    && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">入学希望</th>}
+                      {col("documents")     && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">書類</th>}
+                      {col("cohort")        && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">選考</th>}
+                      {col("agent")         && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">エージェント</th>}
+                      {col("examFee")       && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">選考費</th>}
+                      {col("status")        && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">状態</th>}
+                      {col("createdAt")     && <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">申請日</th>}
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
@@ -512,130 +568,120 @@ export default function AdminDashboard() {
                           className="hover:bg-gray-50 transition-colors cursor-pointer"
                           onClick={() => router.push(`/admin/applications/${app.id}`)}
                         >
-                          <td className="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
-                            {app.applicationNo}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <p className="font-semibold text-gray-900">
-                                {app.lastName} {app.firstName}
-                              </p>
-                              {app.examMode && app.examMode !== "一般" && (
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                                  app.examMode === "特待生" ? "bg-yellow-100 text-yellow-700" : "bg-purple-100 text-purple-700"
-                                }`}>
-                                  {app.examMode === "特待生" ? "★特待" : "◆推薦"}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-400">
-                              {app.lastNameKana} {app.firstNameKana}
-                            </p>
-                            {app.referrerName && (
-                              <p className="text-xs text-gray-400 truncate max-w-[120px]">{app.referrerName}</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{app.nationality}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`status-badge ${getJapaneseLevelStyle(app.japaneseLevel)}`}>
-                              {app.japaneseLevel}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-gray-800 text-xs whitespace-nowrap">{app.lastSchoolName}</p>
-                            <p className="text-xs text-gray-400">{app.lastSchoolCountry}</p>
-                            {app.priorAttendanceRate && (() => {
-                              const rate = parseInt(app.priorAttendanceRate);
-                              const color = rate >= 90 ? "text-green-600" : rate >= 80 ? "text-yellow-600" : "text-red-600";
-                              return <p className={`text-xs font-bold mt-0.5 ${color}`}>出席率 {app.priorAttendanceRate}</p>;
-                            })()}
-                          </td>
-                          <td className="px-4 py-3 min-w-[160px]">
-                            {(app.applicationSchools && app.applicationSchools.length > 0
-                              ? app.applicationSchools
-                              : [{ priority: 1, schoolName: app.schoolName, department: app.department, result: null }]
-                            ).map((s) => (
-                              <div key={s.priority} className="flex items-center gap-1 mb-0.5">
-                                <span className={`text-xs shrink-0 ${s.priority === 1 ? "text-navy-600 font-bold" : "text-gray-400"}`}>
-                                  {["①","②","③"][s.priority - 1] || `${s.priority}.`}
-                                </span>
-                                <span className="text-xs text-gray-700 whitespace-nowrap">{s.schoolName}</span>
-                                {s.result && (
-                                  <span className={`text-xs px-1 rounded shrink-0 ${s.result === "合格" ? "text-green-600" : s.result === "不合格" ? "text-red-500" : "text-yellow-600"}`}>
-                                    {s.result === "合格" ? "✓" : s.result === "不合格" ? "✗" : "△"}
+                          {col("applicationNo") && (
+                            <td className="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{app.applicationNo}</td>
+                          )}
+                          {col("name") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="font-semibold text-gray-900">{app.lastName} {app.firstName}</p>
+                                {app.examMode && app.examMode !== "一般" && (
+                                  <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${app.examMode === "特待生" ? "bg-yellow-100 text-yellow-700" : "bg-purple-100 text-purple-700"}`}>
+                                    {app.examMode === "特待生" ? "★特待" : "◆推薦"}
                                   </span>
                                 )}
                               </div>
-                            ))}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                            {app.enrollmentYear}年{app.enrollmentMonth}月
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                              app.documents.length > 0
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}>
-                              {app.documents.length}件
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {app.cohort ? (
-                              <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                {app.cohort.name}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {app.agent ? (
-                              <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
-                                {app.agent.name}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {app.examFeeStatus && (
-                              <div className="flex flex-col gap-0.5">
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                  app.examFeeStatus === "確認済み" ? "bg-green-100 text-green-700" :
-                                  app.examFeeStatus === "確認中" ? "bg-yellow-100 text-yellow-700" :
-                                  app.examFeeStatus === "免除" ? "bg-gray-100 text-gray-600" :
-                                  "bg-red-100 text-red-600"
-                                }`}>{app.examFeeStatus}</span>
-                                {app.examFeeAmount && (
-                                  <span className="text-xs text-gray-400">¥{app.examFeeAmount.toLocaleString()}</span>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
-                              <span className={`status-badge ${getStatusStyle(app.status)}`}>
-                                {app.status}
-                              </span>
-                              {(app.status === "合格" || app.status === "補欠合格") && app.enrollmentProcedure && (() => {
-                                const step = getEnrollmentStep(app.enrollmentProcedure!);
-                                return (
-                                  <span className={`status-badge text-xs ${step.style}`}>
-                                    {step.label}
-                                  </span>
-                                );
+                              <p className="text-xs text-gray-400">{app.lastNameKana} {app.firstNameKana}</p>
+                              {app.referrerName && <p className="text-xs text-gray-400 truncate max-w-[120px]">{app.referrerName}</p>}
+                            </td>
+                          )}
+                          {col("nationality") && (
+                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{app.nationality}</td>
+                          )}
+                          {col("japaneseLevel") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`status-badge ${getJapaneseLevelStyle(app.japaneseLevel)}`}>{app.japaneseLevel}</span>
+                            </td>
+                          )}
+                          {col("lastSchool") && (
+                            <td className="px-4 py-3">
+                              <p className="text-gray-800 text-xs whitespace-nowrap">{app.lastSchoolName}</p>
+                              <p className="text-xs text-gray-400">{app.lastSchoolCountry}</p>
+                              {app.priorAttendanceRate && (() => {
+                                const rate = parseInt(app.priorAttendanceRate);
+                                const color = rate >= 90 ? "text-green-600" : rate >= 80 ? "text-yellow-600" : "text-red-600";
+                                return <p className={`text-xs font-bold mt-0.5 ${color}`}>出席率 {app.priorAttendanceRate}</p>;
                               })()}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                            {formatDateTimeJP(app.createdAt)}
-                          </td>
+                            </td>
+                          )}
+                          {col("schools") && (
+                            <td className="px-4 py-3 min-w-[160px]">
+                              {(app.applicationSchools && app.applicationSchools.length > 0
+                                ? app.applicationSchools
+                                : [{ priority: 1, schoolName: app.schoolName, department: app.department, result: null }]
+                              ).map(s => (
+                                <div key={s.priority} className="flex items-center gap-1 mb-0.5">
+                                  <span className={`text-xs shrink-0 ${s.priority === 1 ? "text-navy-600 font-bold" : "text-gray-400"}`}>
+                                    {["①","②","③"][s.priority - 1] || `${s.priority}.`}
+                                  </span>
+                                  <span className="text-xs text-gray-700 whitespace-nowrap">{s.schoolName}</span>
+                                  {s.result && (
+                                    <span className={`text-xs px-1 rounded shrink-0 ${s.result === "合格" ? "text-green-600" : s.result === "不合格" ? "text-red-500" : "text-yellow-600"}`}>
+                                      {s.result === "合格" ? "✓" : s.result === "不合格" ? "✗" : "△"}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </td>
+                          )}
+                          {col("enrollment") && (
+                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{app.enrollmentYear}年{app.enrollmentMonth}月</td>
+                          )}
+                          {col("documents") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${app.documents.length > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                {app.documents.length}件
+                              </span>
+                            </td>
+                          )}
+                          {col("cohort") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {app.cohort
+                                ? <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">{app.cohort.name}</span>
+                                : <span className="text-xs text-gray-300">—</span>}
+                            </td>
+                          )}
+                          {col("agent") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {app.agent
+                                ? <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{app.agent.name}</span>
+                                : <span className="text-xs text-gray-300">—</span>}
+                            </td>
+                          )}
+                          {col("examFee") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {app.examFeeStatus && (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                    app.examFeeStatus === "確認済み" ? "bg-green-100 text-green-700" :
+                                    app.examFeeStatus === "確認中"  ? "bg-yellow-100 text-yellow-700" :
+                                    app.examFeeStatus === "免除"    ? "bg-gray-100 text-gray-600" :
+                                    "bg-red-100 text-red-600"
+                                  }`}>{app.examFeeStatus}</span>
+                                  {app.examFeeAmount && <span className="text-xs text-gray-400">¥{app.examFeeAmount.toLocaleString()}</span>}
+                                </div>
+                              )}
+                            </td>
+                          )}
+                          {col("status") && (
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex flex-col gap-1">
+                                <span className={`status-badge ${getStatusStyle(app.status)}`}>{app.status}</span>
+                                {(app.status === "合格" || app.status === "補欠合格") && app.enrollmentProcedure && (() => {
+                                  const step = getEnrollmentStep(app.enrollmentProcedure!);
+                                  return <span className={`status-badge text-xs ${step.style}`}>{step.label}</span>;
+                                })()}
+                              </div>
+                            </td>
+                          )}
+                          {col("createdAt") && (
+                            <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDateTimeJP(app.createdAt)}</td>
+                          )}
                           <td className="px-4 py-3 whitespace-nowrap">
                             <Link
                               href={`/admin/applications/${app.id}`}
                               className="text-navy-700 hover:text-navy-900 font-medium text-xs"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={e => e.stopPropagation()}
                             >
                               詳細 →
                             </Link>
@@ -648,45 +694,41 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Pagination */}
-            {data && data.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
+            {/* ===== ページネーション ===== */}
+            <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-500">
-                  全{data.total}件中 {(page - 1) * 20 + 1}〜{Math.min(page * 20, data.total)}件を表示
+                  全{data?.total ?? 0}件中 {data && data.total > 0 ? (page - 1) * pageSize + 1 : 0}〜{data ? Math.min(page * pageSize, data.total) : 0}件を表示
                 </p>
+                {/* 1ページ件数 */}
+                <select
+                  value={pageSize}
+                  onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600"
+                >
+                  {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n}件/ページ</option>)}
+                </select>
+              </div>
+              {data && data.totalPages > 1 && (
                 <div className="flex gap-2">
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    前へ
-                  </button>
+                  <button disabled={page <= 1} onClick={() => setPage(1)} className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">«</button>
+                  <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">前へ</button>
                   {Array.from({ length: data.totalPages }, (_, i) => i + 1)
-                    .filter((p) => Math.abs(p - page) <= 2)
-                    .map((p) => (
+                    .filter(p => Math.abs(p - page) <= 2)
+                    .map(p => (
                       <button
                         key={p}
                         onClick={() => setPage(p)}
-                        className={`px-3 py-1.5 text-sm rounded-lg border ${
-                          p === page
-                            ? "bg-navy-800 text-white border-navy-800"
-                            : "border-gray-300 hover:bg-gray-50"
-                        }`}
+                        className={`px-3 py-1.5 text-sm rounded-lg border ${p === page ? "bg-navy-800 text-white border-navy-800" : "border-gray-300 hover:bg-gray-50"}`}
                       >
                         {p}
                       </button>
                     ))}
-                  <button
-                    disabled={page >= data.totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    次へ
-                  </button>
+                  <button disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">次へ</button>
+                  <button disabled={page >= data.totalPages} onClick={() => setPage(data.totalPages)} className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">»</button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </main>
