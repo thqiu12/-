@@ -731,9 +731,9 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
       <SectionTitle icon="🏷️">選考区分・推薦</SectionTitle>
       <div className="grid grid-cols-3 gap-3">
         {[
-          { value: "一般", label: "一般選考", desc: "通常の入学試験", icon: "📝" },
-          { value: "指定推薦", label: "指定推薦", desc: "学校・機関からの推薦", icon: "🤝" },
-          { value: "特待生", label: "特待生選考", desc: "成績優秀者対象", icon: "⭐" },
+          { value: "一般", label: "一般選考", desc: "筆記試験・面接あり", icon: "📝", exam: true },
+          { value: "指定推薦", label: "指定推薦", desc: "筆記試験免除・面接のみ", icon: "🤝", exam: false },
+          { value: "特待生", label: "特待生選考", desc: "筆記試験免除・面接のみ", icon: "⭐", exam: false },
         ].map(mode => {
           const sel = form.examMode === mode.value;
           return (
@@ -744,6 +744,9 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
               <div className="text-2xl mb-1">{mode.icon}</div>
               <p className={`font-bold text-sm mb-0.5 ${sel ? "text-blue-700" : "text-gray-700"}`}>{mode.label}</p>
               <p className="text-xs text-gray-400">{mode.desc}</p>
+              <span className={`inline-block mt-1.5 text-xs font-bold px-2 py-0.5 rounded-full ${mode.exam ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
+                {mode.exam ? "✏️ 筆記あり" : "🎫 筆記免除"}
+              </span>
             </label>
           );
         })}
@@ -762,9 +765,20 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
         </div>
       )}
       {form.examMode === "一般" && (
-        <Field label="紹介・推薦機関（任意）" hint="エージェントや紹介者がいる場合はご記入ください">
-          <Input placeholder="例：知日留学センター（なければ空欄）" value={form.referrerName} onChange={e => onChange("referrerName", e.target.value)} />
-        </Field>
+        <>
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">✏️</span>
+              <div>
+                <p className="font-bold text-orange-800 text-sm mb-1">一般選考は筆記試験があります</p>
+                <p className="text-xs text-orange-700">書類審査通過後、筆記試験（日本語・一般教養）と面接を受けていただきます。試験日程は別途ご案内します。</p>
+              </div>
+            </div>
+          </div>
+          <Field label="紹介・推薦機関（任意）" hint="エージェントや紹介者がいる場合はご記入ください">
+            <Input placeholder="例：知日留学センター（なければ空欄）" value={form.referrerName} onChange={e => onChange("referrerName", e.target.value)} />
+          </Field>
+        </>
       )}
     </div>
   );

@@ -1223,14 +1223,21 @@ export default function ApplicationDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500 mb-1.5">選考区分</p>
                   <div className="grid grid-cols-3 gap-2">
-                    {["一般", "指定推薦", "特待生"].map((mode) => (
-                      <label key={mode} className={`cursor-pointer rounded-lg border-2 p-2.5 text-center transition-colors ${examModeEdit === mode ? "border-navy-700 bg-navy-50" : "border-gray-200 hover:border-navy-300"}`}>
-                        <input type="radio" name="examModeEdit" value={mode} className="hidden"
-                          checked={examModeEdit === mode}
-                          onChange={() => setExamModeEdit(mode)}
+                    {([
+                      {value:"一般", label:"一般選考", sub:"✏️ 筆記あり"},
+                      {value:"指定推薦", label:"◆ 指定推薦", sub:"🎫 筆記免除"},
+                      {value:"特待生", label:"★ 特待生", sub:"🎫 筆記免除"},
+                    ]).map((mode) => (
+                      <label key={mode.value} className={`cursor-pointer rounded-lg border-2 p-2.5 text-center transition-colors ${examModeEdit === mode.value ? "border-navy-700 bg-navy-50" : "border-gray-200 hover:border-navy-300"}`}>
+                        <input type="radio" name="examModeEdit" value={mode.value} className="hidden"
+                          checked={examModeEdit === mode.value}
+                          onChange={() => setExamModeEdit(mode.value)}
                         />
-                        <span className={`text-xs font-bold block ${examModeEdit === mode ? "text-navy-800" : "text-gray-600"}`}>
-                          {mode === "特待生" ? "★ 特待生" : mode === "指定推薦" ? "◆ 指定推薦" : "一般選考"}
+                        <span className={`text-xs font-bold block ${examModeEdit === mode.value ? "text-navy-800" : "text-gray-600"}`}>
+                          {mode.label}
+                        </span>
+                        <span className={`text-xs mt-0.5 block ${mode.value === "一般" ? "text-orange-600" : "text-green-600"}`}>
+                          {mode.sub}
                         </span>
                       </label>
                     ))}

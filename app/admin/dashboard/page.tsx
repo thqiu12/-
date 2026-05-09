@@ -631,7 +631,7 @@ export default function AdminDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900">{app.lastName} {app.firstName}</p>
-                          {app.examMode && app.examMode !== "一般" && (
+                          {app.examMode === "一般" ? (<span className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0 bg-orange-100 text-orange-700">✏️筆記</span>) : app.examMode && (
                             <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${app.examMode === "特待生" ? "bg-yellow-100 text-yellow-700" : "bg-purple-100 text-purple-700"}`}>
                               {app.examMode === "特待生" ? "★特待" : "◆推薦"}
                             </span>
@@ -706,7 +706,7 @@ export default function AdminDashboard() {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <p className="font-semibold text-gray-900">{app.lastName} {app.firstName}</p>
-                                {app.examMode && app.examMode !== "一般" && (
+                                {app.examMode === "一般" ? (<span className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0 bg-orange-100 text-orange-700">✏️筆記</span>) : app.examMode && (
                                   <span className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${app.examMode === "特待生" ? "bg-yellow-100 text-yellow-700" : "bg-purple-100 text-purple-700"}`}>
                                     {app.examMode === "特待生" ? "★特待" : "◆推薦"}
                                   </span>
