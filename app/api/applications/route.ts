@@ -331,9 +331,11 @@ export async function POST(request: NextRequest) {
 
     const application = await prisma.application.create({
       data: {
+        id: require("crypto").randomUUID(),
         applicationNo,
         cohortId,
         status: submittedStatus,
+        updatedAt: new Date(),
         lastName: body.lastName,
         firstName: body.firstName,
         lastNameKana: body.lastNameKana,
@@ -366,27 +368,31 @@ export async function POST(request: NextRequest) {
         examMode: body.examMode || "一般",
         referrerName: body.referrerName || null,
         referrerType: body.referrerType || null,
-        // 第一志望を applicationSchools に記録
+        // 第一志望を ApplicationSchool に記録
         applicationSchools: {
           create: [
             {
+              id: require("crypto").randomUUID(),
               priority: 1,
               schoolName: body.schoolName,
               department: body.department,
               course: body.course || null,
               enrollmentYear: body.enrollmentYear,
               enrollmentMonth: body.enrollmentMonth,
+              updatedAt: new Date(),
             },
             // 並願校
             ...((body.additionalSchools ?? []) as Array<{
               schoolName: string; department: string; course?: string;
             }>).map((s, idx) => ({
+              id: require("crypto").randomUUID(),
               priority: idx + 2,
               schoolName: s.schoolName,
               department: s.department,
               course: s.course || null,
               enrollmentYear: body.enrollmentYear,
               enrollmentMonth: body.enrollmentMonth,
+              updatedAt: new Date(),
             })),
           ],
         },

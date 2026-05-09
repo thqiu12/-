@@ -273,6 +273,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
               <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">🎓 在籍</span>
+              <Link href="/admin/enrollment" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">入学手続き</Link>
               <Link href="/admin/students" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">在籍管理</Link>
             </div>
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
@@ -378,7 +379,10 @@ export default function AdminDashboard() {
           if (total === 0) return null;
           return (
             <div className="card mb-6">
-              <h3 className="text-sm font-bold text-navy-700 mb-3">入学手続き進捗（全合格者）</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-navy-700">入学手続き進捗（全合格者）</h3>
+                <Link href="/admin/enrollment" className="text-xs text-navy-600 hover:underline font-medium">管理画面 →</Link>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
                   <p className="text-xs text-sky-600 mb-1">手続き案内済み</p>

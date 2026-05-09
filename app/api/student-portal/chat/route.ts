@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
 
     const msg = await prisma.chatMessage.create({
       data: {
+        id: require("crypto").randomUUID(),
         studentId,
         senderType: "student",
         senderName: `${student.lastName} ${student.firstName}`,

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       if (!ownership.valid) return NextResponse.json({ error: "認証に失敗しました" }, { status: 401 });
     }
     const leave = await prisma.leaveRequest.create({
-      data: { studentId, type, startDate, endDate, reason, status: "申請中" },
+      data: { id: require("crypto").randomUUID(), studentId, type, startDate, endDate, reason, status: "申請中", updatedAt: new Date() },
     });
     return NextResponse.json(leave, { status: 201 });
   } catch (e) {

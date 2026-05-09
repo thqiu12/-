@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         const exists = await prisma.formFieldConfig.findFirst({ where: { fieldKey: f.fieldKey, schoolId: null } });
         if (!exists) {
           await prisma.formFieldConfig.create({
-            data: { fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null },
+            data: { id: require('crypto').randomUUID(), fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null, updatedAt: new Date() },
           });
         }
       }
@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
 
     const created = await prisma.formFieldConfig.create({
       data: {
+        id: require("crypto").randomUUID(),
         fieldKey,
         label,
         section: section || "個人情報",
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
         displayOrder,
         schoolId: schoolId || null,
         description: description || null,
+        updatedAt: new Date(),
       },
     });
 
@@ -190,7 +192,7 @@ export async function PUT(request: NextRequest) {
             return prisma.formFieldConfig.update({ where: { id: existing.id }, data: updateData });
           }
           return prisma.formFieldConfig.create({
-            data: { fieldKey: item.fieldKey, schoolId, ...updateData },
+            data: { id: require("crypto").randomUUID(), fieldKey: item.fieldKey, schoolId, updatedAt: new Date(), ...updateData },
           });
         });
       })

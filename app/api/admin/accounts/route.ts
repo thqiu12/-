@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "このユーザー名は既に使用されています" }, { status: 409 });
     }
     const user = await prisma.adminUser.create({
-      data: { username, passwordHash: hashPassword(password), displayName, role, isActive: true },
+      data: { id: crypto.randomUUID(), username, passwordHash: hashPassword(password), displayName, role, isActive: true, updatedAt: new Date() },
       select: { id: true, username: true, displayName: true, role: true, isActive: true, createdAt: true },
     });
     return NextResponse.json(user, { status: 201 });

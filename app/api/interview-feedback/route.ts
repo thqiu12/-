@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
 
     const feedback = await prisma.interviewFeedback.create({
       data: {
+        id: require("crypto").randomUUID(),
         applicationId: body.applicationId,
+        updatedAt: new Date(),
         interviewerId: body.interviewerId || null,
         interviewerName: body.interviewerName,
         scoreJapanese: body.scoreJapanese ? parseInt(body.scoreJapanese) : null,

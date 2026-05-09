@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     const announcement = await prisma.announcement.create({
       data: {
+        id: require("crypto").randomUUID(),
         title: body.title,
         content: body.content,
         targetType: body.targetType || "all",

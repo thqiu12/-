@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
     }
     const hw = await prisma.homework.create({
       data: {
+        id: require("crypto").randomUUID(),
         subjectId: body.subjectId,
+        updatedAt: new Date(),
         title: body.title,
         description: body.description || null,
         dueDate: body.dueDate,

@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
 
     const cohort = await prisma.cohort.create({
       data: {
+        id: require("crypto").randomUUID(),
         name: body.name,
+        updatedAt: new Date(),
         description: body.description || null,
         examDate: body.examDate || null,
         deadline: body.deadline || null,

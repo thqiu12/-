@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         const exists = await prisma.formFieldConfig.findFirst({ where: { fieldKey: f.fieldKey, schoolId: null } });
         if (!exists) {
           await prisma.formFieldConfig.create({
-            data: { fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null },
+            data: { id: require("crypto").randomUUID(), fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null, updatedAt: new Date() },
           });
         }
       }

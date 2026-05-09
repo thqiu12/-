@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     const signature = await prisma.enrollmentSignature.upsert({
       where: { applicationId: ownership.applicationId! },
-      create: { applicationId: ownership.applicationId!, signatureData, signerName: signerName.trim(), signedAt: new Date() },
+      create: { id: require("crypto").randomUUID(), applicationId: ownership.applicationId!, signatureData, signerName: signerName.trim(), signedAt: new Date() },
       update: { signatureData, signerName: signerName.trim(), signedAt: new Date() },
     });
 

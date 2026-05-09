@@ -113,9 +113,11 @@ export async function POST(request: NextRequest) {
     const procedure = await prisma.enrollmentProcedure.upsert({
       where: { applicationId },
       create: {
+        id: require("crypto").randomUUID(),
         applicationId,
         ...data,
         status: publish ? "案内済み" : "未開始",
+        updatedAt: new Date(),
       },
       update: data,
     });

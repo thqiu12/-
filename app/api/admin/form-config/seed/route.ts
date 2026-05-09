@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await prisma.formFieldConfig.createMany({
-      data: seedData.map(f => ({ ...f, schoolId })),
+      data: seedData.map(f => ({ id: require("crypto").randomUUID(), ...f, schoolId, updatedAt: new Date() })),
     });
 
     return NextResponse.json(

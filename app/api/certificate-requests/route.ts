@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const { studentId, type, purpose, copies } = body;
     if (!studentId || !type) return NextResponse.json({ error: "studentIdとtypeは必須です" }, { status: 400 });
     const req = await prisma.certificateRequest.create({
-      data: { studentId, type, purpose: purpose || null, copies: copies || 1, status: "申請中" },
+      data: { id: require("crypto").randomUUID(), studentId, type, purpose: purpose || null, copies: copies || 1, status: "申請中", updatedAt: new Date() },
     });
     return NextResponse.json(req, { status: 201 });
   } catch (e) {

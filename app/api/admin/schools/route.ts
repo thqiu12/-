@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
     const school = await prisma.applySchool.create({
       data: {
+        id: require("crypto").randomUUID(),
         schoolKey,
         name,
         hojin,
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
         isActive: isActive ?? true,
         displayOrder: displayOrder ?? 0,
         departments: departmentsStr,
+        updatedAt: new Date(),
       },
     });
     return NextResponse.json(school, { status: 201 });

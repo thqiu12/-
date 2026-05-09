@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
           },
         },
         create: {
+          id: require("crypto").randomUUID(),
           studentId: r.studentId,
           subjectId: r.subjectId,
           timetableSlotId: r.timetableSlotId || null,

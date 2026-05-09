@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     const q = await prisma.enrollmentQuota.upsert({
       where: { schoolName_department_enrollmentYear: { schoolName, department, enrollmentYear } },
       update: { quota: Number(quota), memo: memo || null },
-      create: { schoolName, department, enrollmentYear, quota: Number(quota), memo: memo || null },
+      create: { id: require("crypto").randomUUID(), schoolName, department, enrollmentYear, quota: Number(quota), memo: memo || null, updatedAt: new Date() },
     });
     return NextResponse.json(q, { status: 201 });
   } catch (e) {

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     if (!body.name) return NextResponse.json({ error: "名前は必須です" }, { status: 400 });
-    const agent = await prisma.agent.create({ data: { name: body.name, country: body.country || null, contactEmail: body.contactEmail || null, notes: body.notes || null } });
+    const agent = await prisma.agent.create({ data: { id: require('crypto').randomUUID(), name: body.name, country: body.country || null, contactEmail: body.contactEmail || null, notes: body.notes || null, updatedAt: new Date() } });
     return NextResponse.json(agent, { status: 201 });
   } catch (e) {
     console.error(e);
