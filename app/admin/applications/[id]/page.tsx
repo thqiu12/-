@@ -1892,6 +1892,108 @@ export default function ApplicationDetailPage() {
 
 
 
+
+
+            {/* 管理メモ・メモ履歴 - 入学手続きタブ以外で表示 */}
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
+              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
+                管理メモ
+              </h3>
+              <textarea
+                className="form-input min-h-[120px] resize-y text-sm mb-3"
+                placeholder="この申請に関する内部メモを記入してください（申請者には表示されません）"
+                value={adminMemo}
+                onChange={(e) => setAdminMemo(e.target.value)}
+              />
+              <button
+                onClick={handleMemoSave}
+                disabled={saving}
+                className="btn-primary w-full text-sm"
+              >
+                {memoSaved ? (
+                  <span className="flex items-center justify-center gap-1.5">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    保存しました
+                  </span>
+                ) : (
+                  "メモを保存"
+                )}
+              </button>
+            </div>
+
+            {/* メモ履歴 */}
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
+              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
+                コメント・メモ履歴
+              </h3>
+              <div className="mb-3 space-y-2">
+                <textarea
+                  className="form-input text-sm min-h-[80px] resize-y"
+                  placeholder="コメントを追加..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={noteAdding || !newNote.trim()}
+                  className="btn-primary w-full text-sm"
+                >
+                  {noteAdding ? "追加中..." : "コメントを追加"}
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {application.adminNotes.length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center py-4">
+                    コメントはまだありません
+                  </p>
+                ) : (
+                  application.adminNotes.map((note) => (
+                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-navy-700">{note.author}</span>
+                        <span className="text-xs text-gray-400">{formatDateTimeJP(note.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 申請情報サマリー */}
+            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card bg-gray-50">
+              <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">
+                申請情報
+              </h3>
+              <div className="space-y-1.5 text-xs text-gray-600">
+                <div className="flex justify-between">
+                  <span>申請番号</span>
+                  <span className="font-mono font-bold">{application.applicationNo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>申請日時</span>
+                  <span>{formatDateTimeJP(application.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>最終更新</span>
+                  <span>{formatDateTimeJP(application.updatedAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>書類数</span>
+                  <span>{application.documents.length}件</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+
+
+        </div>
+
     {/* 入学手続き管理（合格後のみ・入学手続きタブ） */}
         <div style={{display: activeTab==="enrollment" ? undefined : "none"}}>
         {!(application.status === "合格" || application.status === "補欠合格") && (
@@ -2280,105 +2382,6 @@ export default function ApplicationDetailPage() {
         )}
         </div>{/* end enrollment tab */}
 
-            {/* 管理メモ・メモ履歴 - 入学手続きタブ以外で表示 */}
-            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
-              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
-                管理メモ
-              </h3>
-              <textarea
-                className="form-input min-h-[120px] resize-y text-sm mb-3"
-                placeholder="この申請に関する内部メモを記入してください（申請者には表示されません）"
-                value={adminMemo}
-                onChange={(e) => setAdminMemo(e.target.value)}
-              />
-              <button
-                onClick={handleMemoSave}
-                disabled={saving}
-                className="btn-primary w-full text-sm"
-              >
-                {memoSaved ? (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    保存しました
-                  </span>
-                ) : (
-                  "メモを保存"
-                )}
-              </button>
-            </div>
-
-            {/* メモ履歴 */}
-            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
-              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
-                コメント・メモ履歴
-              </h3>
-              <div className="mb-3 space-y-2">
-                <textarea
-                  className="form-input text-sm min-h-[80px] resize-y"
-                  placeholder="コメントを追加..."
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                />
-                <button
-                  onClick={handleAddNote}
-                  disabled={noteAdding || !newNote.trim()}
-                  className="btn-primary w-full text-sm"
-                >
-                  {noteAdding ? "追加中..." : "コメントを追加"}
-                </button>
-              </div>
-
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {application.adminNotes.length === 0 ? (
-                  <p className="text-gray-400 text-sm text-center py-4">
-                    コメントはまだありません
-                  </p>
-                ) : (
-                  application.adminNotes.map((note) => (
-                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-navy-700">{note.author}</span>
-                        <span className="text-xs text-gray-400">{formatDateTimeJP(note.createdAt)}</span>
-                      </div>
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* 申請情報サマリー */}
-            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card bg-gray-50">
-              <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">
-                申請情報
-              </h3>
-              <div className="space-y-1.5 text-xs text-gray-600">
-                <div className="flex justify-between">
-                  <span>申請番号</span>
-                  <span className="font-mono font-bold">{application.applicationNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>申請日時</span>
-                  <span>{formatDateTimeJP(application.createdAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>最終更新</span>
-                  <span>{formatDateTimeJP(application.updatedAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>書類数</span>
-                  <span>{application.documents.length}件</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-
-
-        </div>
       </main>
     </div>
   );
