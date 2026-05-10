@@ -203,15 +203,20 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch("/api/agents").then(r => r.json()).then(d => setAgents(Array.isArray(d) ? d : (d.agents || [])));
     fetch("/api/cohorts").then(r => r.json()).then(d => Array.isArray(d) && setCohorts(d));
-    // 定員サマリー
-    const nextYear = String(new Date().getFullYear() + 1);
+    // 定員サマリー: 定員レコードに出現する enrollmentYear のうち
+    // 「現在年度以降の最も若い年度」を選択。なければ最新年度。
     fetch("/api/admin/quota").then(r => r.json()).then(rows => {
-      if (!Array.isArray(rows)) return;
-      const filtered = rows.filter((r: { enrollmentYear: string }) => r.enrollmentYear === nextYear);
+      if (!Array.isArray(rows) || rows.length === 0) return;
+      const currentYear = new Date().getFullYear();
+      const years = Array.from(
+        new Set((rows as { enrollmentYear: string }[]).map(r => r.enrollmentYear)),
+      ).sort();
+      const target = years.find(y => Number(y) >= currentYear) ?? years[years.length - 1];
+      const filtered = rows.filter((r: { enrollmentYear: string }) => r.enrollmentYear === target);
       const totalQuota = filtered.reduce((s: number, r: { quota: number }) => s + (r.quota || 0), 0);
       const totalAccepted = filtered.reduce((s: number, r: { accepted: number }) => s + r.accepted, 0);
       const totalRemaining = filtered.reduce((s: number, r: { remaining: number }) => s + Math.max(r.remaining, 0), 0);
-      setQuotaSummary({ totalQuota, totalAccepted, totalRemaining, year: nextYear });
+      setQuotaSummary({ totalQuota, totalAccepted, totalRemaining, year: target });
     });
     // グローバル統計（全量）
     fetch("/api/applications/stats").then(r => r.json()).then(d => setGlobalStats(d));

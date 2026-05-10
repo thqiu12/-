@@ -1388,7 +1388,7 @@ function ApplyPageInner() {
             setForm(prev => ({
               ...prev,
               schoolId: found.id,
-              schoolName: `${found.hojin} ${found.name}`,
+              schoolName: found.name,
             }));
             setPreselectedSchool(true);
             fetchFormConfig(found.id);
@@ -1408,7 +1408,7 @@ function ApplyPageInner() {
         if (schoolParam) {
           const found = SCHOOLS_FALLBACK.find(s => s.id === schoolParam || s.schoolKey === schoolParam);
           if (found) {
-            setForm(prev => ({ ...prev, schoolId: found.id, schoolName: `${found.hojin} ${found.name}` }));
+            setForm(prev => ({ ...prev, schoolId: found.id, schoolName: found.name }));
             setPreselectedSchool(true);
           }
         }
@@ -1557,7 +1557,7 @@ function ApplyPageInner() {
       ...prev,
       additionalSchools: [
         ...prev.additionalSchools,
-        { schoolId: school.id, schoolName: `${school.hojin} ${school.name}`, department: "", course: "" },
+        { schoolId: school.id, schoolName: school.name, department: "", course: "" },
       ],
     }));
   };
