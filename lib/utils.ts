@@ -1,6 +1,8 @@
+import crypto from "crypto";
+
 /**
  * 申請番号を生成する（旧形式 - フォールバック用）
- * 形式: APP-YYYYMMDD-XXXX
+ * 形式: APP-YYYYMMDD-XXXXXXXX (16^8 = 約 43 億の空間で衝突を実質排除)
  */
 export function generateApplicationNo(): string {
   const now = new Date();
@@ -8,7 +10,7 @@ export function generateApplicationNo(): string {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const dateStr = `${year}${month}${day}`;
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const random = crypto.randomBytes(4).toString("hex").toUpperCase();
   return `APP-${dateStr}-${random}`;
 }
 

@@ -11,17 +11,20 @@ export interface AdminSession {
   isValid: boolean;
 }
 
-export function makeSessionToken(userId: string, role: string): string {
-  const payload = `${userId}:${role}:${Date.now()}`;
+export function makeSessionToken(userId: string, role: string, tokenVersion: number): string {
+  const payload = `${userId}:${role}:${tokenVersion}:${Date.now()}`;
   const sig = crypto.createHmac("sha256", ENV.SESSION_SECRET).update(payload).digest("hex");
   return Buffer.from(`${payload}:${sig}`).toString("base64");
 }
 
-function verifyToken(token: string): { userId: string; role: string } | null {
+function verifyToken(
+  token: string,
+): { userId: string; role: string; tokenVersion: number } | null {
   try {
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const parts = decoded.split(":");
-    if (parts.length < 4) return null;
+    // payload = userId:role:tokenVersion:issuedAt + sig => 5 parts
+    if (parts.length < 5) return null;
     const sig = parts[parts.length - 1];
     const payload = parts.slice(0, parts.length - 1).join(":");
     const expected = crypto.createHmac("sha256", ENV.SESSION_SECRET).update(payload).digest("hex");
@@ -29,8 +32,10 @@ function verifyToken(token: string): { userId: string; role: string } | null {
     const b = Buffer.from(expected);
     if (a.length !== b.length) return null;
     if (!crypto.timingSafeEqual(a, b)) return null;
-    const [userId, role] = parts;
-    return { userId, role };
+    const [userId, role, tv] = parts;
+    const tokenVersion = Number(tv);
+    if (!Number.isFinite(tokenVersion)) return null;
+    return { userId, role, tokenVersion };
   } catch {
     return null;
   }
@@ -44,6 +49,7 @@ export async function getSession(request: NextRequest): Promise<AdminSession | n
   try {
     const user = await prisma.adminUser.findUnique({ where: { id: parsed.userId } });
     if (!user || !user.isActive) return null;
+    if (user.tokenVersion !== parsed.tokenVersion) return null;
     return { userId: user.id, role: user.role as AdminRole, isValid: true };
   } catch {
     return null;

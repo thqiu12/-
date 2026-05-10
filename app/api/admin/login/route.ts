@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       await prisma.adminUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     }
 
-    const token = makeSessionToken(user.id, user.role);
+    const token = makeSessionToken(user.id, user.role, user.tokenVersion);
     const csrf = issueCsrfToken();
 
     const response = NextResponse.json({

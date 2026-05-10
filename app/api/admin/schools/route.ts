@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin } from "@/lib/auth";
+import { ApplySchoolUpsertSchema } from "@/lib/schemas";
+import { logError } from "@/lib/logger";
 
-// GET: 全志望校一覧（管理者）
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) {
@@ -12,61 +13,50 @@ export async function GET(request: NextRequest) {
     const schools = await prisma.applySchool.findMany({
       orderBy: { displayOrder: "asc" },
     });
-    const result = schools.map(s => {
+    const result = schools.map((s) => {
       let departments: unknown[] = [];
-      try { departments = JSON.parse(s.departments); } catch { departments = []; }
+      try {
+        departments = JSON.parse(s.departments);
+      } catch {
+        departments = [];
+      }
       return { ...s, departments };
     });
     return NextResponse.json(result);
   } catch (e) {
-    console.error(e);
+    logError("GET /api/admin/schools", e);
     return NextResponse.json({ error: "取得に失敗しました" }, { status: 500 });
   }
 }
 
-// POST: 志望校を作成
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
   try {
-    const body = await request.json();
-    const { schoolKey, name, hojin, icon, isActive, displayOrder, departments } = body;
-    if (!schoolKey || !name || !hojin) {
-      return NextResponse.json({ error: "schoolKey, name, hojin は必須です" }, { status: 400 });
+    const parsed = ApplySchoolUpsertSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
-    // Validate departments JSON
-    let departmentsStr: string;
-    if (typeof departments === "string") {
-      try { JSON.parse(departments); departmentsStr = departments; } catch {
-        return NextResponse.json({ error: "departments は有効なJSON形式で入力してください" }, { status: 400 });
-      }
-    } else {
-      departmentsStr = JSON.stringify(departments ?? []);
-    }
+    const { departments, ...rest } = parsed.data;
     const school = await prisma.applySchool.create({
-      data: {
-        id: require("crypto").randomUUID(),
-        schoolKey,
-        name,
-        hojin,
-        icon: icon || "🏫",
-        isActive: isActive ?? true,
-        displayOrder: displayOrder ?? 0,
-        departments: departmentsStr,
-        updatedAt: new Date(),
-      },
+      data: { ...rest, departments: JSON.stringify(departments) },
     });
     return NextResponse.json(school, { status: 201 });
   } catch (e: unknown) {
-    console.error(e);
-    const msg = e instanceof Error && e.message.includes("Unique constraint") ? "schoolKey が重複しています" : "作成に失敗しました";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logError("POST /api/admin/schools", e);
+    const msg = e instanceof Error && e.message.includes("Unique constraint")
+      ? "schoolKey が重複しています"
+      : "作成に失敗しました";
+    const status = msg.includes("重複") ? 409 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }
 
-// PUT: 志望校を更新
 export async function PUT(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) {
@@ -74,40 +64,30 @@ export async function PUT(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const { id, schoolKey, name, hojin, icon, isActive, displayOrder, departments } = body;
-    if (!id) {
-      return NextResponse.json({ error: "id は必須です" }, { status: 400 });
+    const id = typeof body?.id === "string" ? body.id : null;
+    if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
+    const parsed = ApplySchoolUpsertSchema.partial().safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
-    let departmentsStr: string | undefined;
-    if (departments !== undefined) {
-      if (typeof departments === "string") {
-        try { JSON.parse(departments); departmentsStr = departments; } catch {
-          return NextResponse.json({ error: "departments は有効なJSON形式で入力してください" }, { status: 400 });
-        }
-      } else {
-        departmentsStr = JSON.stringify(departments);
-      }
-    }
+    const { departments, ...rest } = parsed.data;
     const updated = await prisma.applySchool.update({
       where: { id },
       data: {
-        ...(schoolKey !== undefined && { schoolKey }),
-        ...(name !== undefined && { name }),
-        ...(hojin !== undefined && { hojin }),
-        ...(icon !== undefined && { icon }),
-        ...(isActive !== undefined && { isActive }),
-        ...(displayOrder !== undefined && { displayOrder }),
-        ...(departmentsStr !== undefined && { departments: departmentsStr }),
+        ...rest,
+        ...(departments !== undefined && { departments: JSON.stringify(departments) }),
       },
     });
     return NextResponse.json(updated);
   } catch (e) {
-    console.error(e);
+    logError("PUT /api/admin/schools", e);
     return NextResponse.json({ error: "更新に失敗しました" }, { status: 500 });
   }
 }
 
-// DELETE: 志望校を削除
 export async function DELETE(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) {
@@ -116,13 +96,11 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "id は必須です" }, { status: 400 });
-    }
+    if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
     await prisma.applySchool.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error(e);
+    logError("DELETE /api/admin/schools", e);
     return NextResponse.json({ error: "削除に失敗しました" }, { status: 500 });
   }
 }

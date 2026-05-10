@@ -31,6 +31,28 @@ export default function CsrfBootstrap() {
       if (!headers.has("x-csrf-token")) headers.set("x-csrf-token", token);
       return original(input, { ...init, headers });
     };
+
+    // XMLHttpRequest 経由のリクエストにも CSRF トークンを自動付与
+    type XHR = XMLHttpRequest & { __csrfMethod?: string; __csrfUrl?: string };
+    const xhrOpen = XMLHttpRequest.prototype.open;
+    const xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (this: XHR, method, url, ...rest: unknown[]) {
+      this.__csrfMethod = String(method).toUpperCase();
+      this.__csrfUrl = typeof url === "string" ? url : url.toString();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (xhrOpen as any).call(this, method, url, ...rest);
+    };
+    XMLHttpRequest.prototype.send = function (this: XHR, body?: Document | XMLHttpRequestBodyInit | null) {
+      const m = this.__csrfMethod || "GET";
+      const u = this.__csrfUrl || "";
+      if (m !== "GET" && m !== "HEAD" && m !== "OPTIONS" && u.startsWith("/api/")) {
+        const token = readCookie("csrf_token");
+        if (token) {
+          try { this.setRequestHeader("x-csrf-token", token); } catch { /* already sent */ }
+        }
+      }
+      return xhrSend.call(this, body ?? null);
+    };
   }, []);
   return null;
 }

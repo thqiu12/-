@@ -256,3 +256,94 @@ export const QuotaSchema = z.object({
   quota: z.coerce.number().int().min(0).max(10000),
   memo: optStr(500),
 });
+
+const CohortStatusEnum = z.enum(["受付中", "選考中", "完了"]);
+const TuitionPlanEnum = z.enum(["全額", "分割（2期）"]);
+
+const isoDate = z.string().refine((v) => !Number.isNaN(Date.parse(v)), "ISO datetime expected");
+
+export const CohortCreateSchema = z.object({
+  name: str(200),
+  description: optStr(2000),
+  examDate: optStr(50),
+  deadline: optStr(50),
+  status: CohortStatusEnum.default("受付中"),
+  isDefault: z.boolean().optional().default(false),
+  year: z.coerce.number().int().min(2020).max(2099).optional(),
+  round: z.coerce.number().int().min(1).max(99).optional(),
+  schoolKey: optStr(100),
+  acceptStart: isoDate.optional().nullable(),
+  acceptEnd: isoDate.optional().nullable(),
+  defaultTuitionPlan: TuitionPlanEnum.optional().nullable(),
+  defaultTuitionAmount: optStr(50),
+  defaultTuitionAmount2: optStr(50),
+  defaultTuitionDeadline: optStr(50),
+  defaultTuitionDeadline2: optStr(50),
+  defaultTuitionBankInfo: optStr(500),
+  defaultStep2Deadline: optStr(50),
+  defaultStep3Deadline: optStr(50),
+});
+export const CohortPatchSchema = CohortCreateSchema.partial();
+
+export const TimetableSlotSchema = z.object({
+  subjectId: cuid(),
+  teacherId: z.string().max(40).optional().nullable(),
+  dayOfWeek: z.coerce.number().int().min(1).max(7),
+  period: z.coerce.number().int().min(1).max(8),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  room: optStr(50),
+});
+export const TimetableCreateSchema = z.object({
+  schoolId: cuid(),
+  classId: cuid(),
+  name: optStr(100),
+  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  validTo: optStr(20),
+  slots: z.array(TimetableSlotSchema).max(200).optional(),
+});
+
+const SchoolDepartmentSchema = z.object({
+  name: str(100),
+  duration: z.string().max(50).optional().default(""),
+  courses: z.array(str(100)).max(50).optional().default([]),
+});
+
+export const ApplySchoolUpsertSchema = z.object({
+  schoolKey: z.string().regex(/^[a-z0-9-]+$/, "lowercase alnum + hyphen only").max(100),
+  name: str(100),
+  hojin: str(200),
+  icon: z.string().max(20).optional().default("🏫"),
+  isActive: z.boolean().optional().default(true),
+  displayOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
+  departments: z.array(SchoolDepartmentSchema).max(50),
+});
+
+const VisaStatusEnum = z.enum(["未申請", "申請中", "発給済", "却下"]);
+const DormStatusEnum = z.enum(["未申請", "申請中", "決定", "辞退"]);
+
+export const EnrollmentUpsertSchema = z.object({
+  applicationId: cuid(),
+  publish: z.boolean().optional(),
+  instructions: optStr(5000),
+  deadline: optStr(50),
+  step1Deadline: optStr(50),
+  step2Deadline: optStr(50),
+  step3Deadline: optStr(50),
+  tuitionPlan: TuitionPlanEnum.optional(),
+  tuitionPaid: z.boolean().optional(),
+  tuitionPaidAt: isoDate.optional().nullable(),
+  tuitionAmount: optStr(50),
+  tuitionAmount2: optStr(50),
+  tuitionDeadline2: optStr(50),
+  tuitionBankInfo: optStr(500),
+  docSubmitted: z.boolean().optional(),
+  docSubmittedAt: isoDate.optional().nullable(),
+  docChecklist: z.union([z.string().max(20000), z.array(z.unknown())]).optional(),
+  visaStatus: VisaStatusEnum.optional(),
+  visaNote: optStr(1000),
+  dormApply: z.boolean().optional(),
+  dormStatus: DormStatusEnum.optional(),
+  dormNote: optStr(1000),
+  adminNote: optStr(2000),
+});

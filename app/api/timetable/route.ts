@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin } from "@/lib/auth";
+import { TimetableCreateSchema } from "@/lib/schemas";
+import { logError } from "@/lib/logger";
+import type { Prisma } from "@prisma/client";
 
-const DAY_LABELS = ["", "月", "火", "水", "木", "金", "土"];
-
-// GET: 時間割取得
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const schoolId = searchParams.get("schoolId");
-    const where: Record<string, unknown> = { isActive: true };
+    const where: Prisma.TimetableWhereInput = { isActive: true };
     if (classId) where.classId = classId;
     if (schoolId) where.schoolId = schoolId;
 
@@ -31,44 +31,50 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(timetables);
   } catch (e) {
+    logError("GET /api/timetable", e);
     return NextResponse.json({ error: "取得に失敗しました" }, { status: 500 });
   }
 }
 
-// POST: 時間割作成
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   try {
-    const body = await request.json();
-    if (!body.schoolId || !body.classId || !body.validFrom) {
-      return NextResponse.json({ error: "schoolId・classId・validFromは必須です" }, { status: 400 });
+    const parsed = TimetableCreateSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
+    const { schoolId, classId, name, validFrom, validTo, slots } = parsed.data;
     const timetable = await prisma.timetable.create({
       data: {
-        schoolId: body.schoolId,
-        classId: body.classId,
-        name: body.name || null,
-        validFrom: body.validFrom,
-        validTo: body.validTo || null,
+        schoolId,
+        classId,
+        name: name ?? null,
+        validFrom,
+        validTo: validTo ?? null,
         isActive: true,
-        slots: body.slots ? {
-          create: body.slots.map((s: { subjectId: string; teacherId?: string; dayOfWeek: number; period: number; startTime: string; endTime: string; room?: string }) => ({
-            subjectId: s.subjectId,
-            teacherId: s.teacherId || null,
-            dayOfWeek: s.dayOfWeek,
-            period: s.period,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            room: s.room || null,
-          })),
-        } : undefined,
+        slots: slots && slots.length > 0
+          ? {
+              create: slots.map((s) => ({
+                subjectId: s.subjectId,
+                teacherId: s.teacherId ?? null,
+                dayOfWeek: s.dayOfWeek,
+                period: s.period,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                room: s.room ?? null,
+              })),
+            }
+          : undefined,
       },
       include: { slots: { include: { subject: true, teacher: true } } },
     });
     return NextResponse.json(timetable, { status: 201 });
   } catch (e) {
-    console.error(e);
+    logError("POST /api/timetable", e);
     return NextResponse.json({ error: "作成に失敗しました" }, { status: 500 });
   }
 }

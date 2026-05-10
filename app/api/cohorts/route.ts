@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin } from "@/lib/auth";
+import { CohortCreateSchema, CohortPatchSchema } from "@/lib/schemas";
+import { logError } from "@/lib/logger";
+import type { Prisma } from "@prisma/client";
+
+function buildData(parsed: Prisma.CohortCreateInput | Prisma.CohortUpdateInput, body: Record<string, unknown>) {
+  const d: Record<string, unknown> = { ...parsed };
+  if ("acceptStart" in body) {
+    d.acceptStart = body.acceptStart ? new Date(body.acceptStart as string) : null;
+  }
+  if ("acceptEnd" in body) {
+    d.acceptEnd = body.acceptEnd ? new Date(body.acceptEnd as string) : null;
+  }
+  return d;
+}
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -10,13 +24,11 @@ export async function GET(request: NextRequest) {
   try {
     const cohorts = await prisma.cohort.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
-        _count: { select: { applications: true } },
-      },
+      include: { _count: { select: { applications: true } } },
     });
     return NextResponse.json(cohorts);
   } catch (error) {
-    console.error("GET /api/cohorts error:", error);
+    logError("GET /api/cohorts", error);
     return NextResponse.json({ error: "選考一覧の取得に失敗しました" }, { status: 500 });
   }
 }
@@ -27,44 +39,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
   try {
-    const body = await request.json();
-    if (!body.name) {
-      return NextResponse.json({ error: "選考名は必須です" }, { status: 400 });
+    const raw = await request.json();
+    const parsed = CohortCreateSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
+    const data = buildData(parsed.data as Prisma.CohortCreateInput, raw);
 
-    // isDefault=true の場合、他のバッチをfalseに
-    if (body.isDefault) {
-      await prisma.cohort.updateMany({ data: { isDefault: false } });
-    }
-
-    const cohort = await prisma.cohort.create({
-      data: {
-        id: require("crypto").randomUUID(),
-        name: body.name,
-        updatedAt: new Date(),
-        description: body.description || null,
-        examDate: body.examDate || null,
-        deadline: body.deadline || null,
-        status: body.status || "受付中",
-        isDefault: body.isDefault || false,
-        year: body.year || new Date().getFullYear(),
-        round: body.round || 1,
-        schoolKey:   body.schoolKey   || null,
-        acceptStart: body.acceptStart ? new Date(body.acceptStart) : null,
-        acceptEnd:   body.acceptEnd   ? new Date(body.acceptEnd)   : null,
-        defaultTuitionPlan:      body.defaultTuitionPlan      || null,
-        defaultTuitionAmount:    body.defaultTuitionAmount    || null,
-        defaultTuitionAmount2:   body.defaultTuitionAmount2   || null,
-        defaultTuitionDeadline:  body.defaultTuitionDeadline  || null,
-        defaultTuitionDeadline2: body.defaultTuitionDeadline2 || null,
-        defaultTuitionBankInfo:  body.defaultTuitionBankInfo  || null,
-        defaultStep2Deadline:    body.defaultStep2Deadline    || null,
-        defaultStep3Deadline:    body.defaultStep3Deadline    || null,
-      },
+    const cohort = await prisma.$transaction(async (tx) => {
+      if (parsed.data.isDefault) {
+        await tx.cohort.updateMany({ data: { isDefault: false } });
+      }
+      return tx.cohort.create({ data: data as Prisma.CohortCreateInput });
     });
     return NextResponse.json(cohort, { status: 201 });
   } catch (error) {
-    console.error("POST /api/cohorts error:", error);
+    logError("POST /api/cohorts", error);
     return NextResponse.json({ error: "選考の作成に失敗しました" }, { status: 500 });
   }
 }
@@ -77,43 +70,26 @@ export async function PATCH(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
+    if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
+    const raw = await request.json();
+    const parsed = CohortPatchSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
-    const body = await request.json();
+    const data = buildData(parsed.data as Prisma.CohortUpdateInput, raw);
 
-    // isDefault=true の場合、他のバッチをfalseに
-    if (body.isDefault) {
-      await prisma.cohort.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
-    }
-
-    const cohort = await prisma.cohort.update({
-      where: { id },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.examDate !== undefined && { examDate: body.examDate }),
-        ...(body.deadline !== undefined && { deadline: body.deadline }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.isDefault !== undefined && { isDefault: body.isDefault }),
-        ...(body.year !== undefined && { year: body.year }),
-        ...(body.round !== undefined && { round: body.round }),
-        ...(body.schoolKey   !== undefined && { schoolKey:   body.schoolKey || null }),
-        ...(body.acceptStart !== undefined && { acceptStart: body.acceptStart ? new Date(body.acceptStart) : null }),
-        ...(body.acceptEnd   !== undefined && { acceptEnd:   body.acceptEnd   ? new Date(body.acceptEnd)   : null }),
-        ...(body.defaultTuitionPlan      !== undefined && { defaultTuitionPlan:      body.defaultTuitionPlan }),
-        ...(body.defaultTuitionAmount    !== undefined && { defaultTuitionAmount:    body.defaultTuitionAmount }),
-        ...(body.defaultTuitionAmount2   !== undefined && { defaultTuitionAmount2:   body.defaultTuitionAmount2 }),
-        ...(body.defaultTuitionDeadline  !== undefined && { defaultTuitionDeadline:  body.defaultTuitionDeadline }),
-        ...(body.defaultTuitionDeadline2 !== undefined && { defaultTuitionDeadline2: body.defaultTuitionDeadline2 }),
-        ...(body.defaultTuitionBankInfo  !== undefined && { defaultTuitionBankInfo:  body.defaultTuitionBankInfo }),
-        ...(body.defaultStep2Deadline    !== undefined && { defaultStep2Deadline:    body.defaultStep2Deadline }),
-        ...(body.defaultStep3Deadline    !== undefined && { defaultStep3Deadline:    body.defaultStep3Deadline }),
-      },
+    const cohort = await prisma.$transaction(async (tx) => {
+      if (parsed.data.isDefault) {
+        await tx.cohort.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
+      }
+      return tx.cohort.update({ where: { id }, data: data as Prisma.CohortUpdateInput });
     });
     return NextResponse.json(cohort);
   } catch (error) {
-    console.error("PATCH /api/cohorts error:", error);
+    logError("PATCH /api/cohorts", error);
     return NextResponse.json({ error: "選考の更新に失敗しました" }, { status: 500 });
   }
 }
@@ -126,23 +102,18 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
-    }
-
-    // 申請が紐付いている場合は削除不可
+    if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
     const count = await prisma.application.count({ where: { cohortId: id } });
     if (count > 0) {
       return NextResponse.json(
         { error: `この選考には${count}件の申請が紐付いているため削除できません` },
-        { status: 400 }
+        { status: 400 },
       );
     }
-
     await prisma.cohort.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/cohorts error:", error);
+    logError("DELETE /api/cohorts", error);
     return NextResponse.json({ error: "選考の削除に失敗しました" }, { status: 500 });
   }
 }

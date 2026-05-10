@@ -280,6 +280,21 @@ export async function POST(request: NextRequest) {
     }
     const body = parsed.data;
 
+    // 直近5分間に同じメールから出願済みなら拒否（誤クリック・ボット連投対策）
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recent = await prisma.application.findFirst({
+      where: { email: body.email, createdAt: { gte: fiveMinAgo } },
+      select: { applicationNo: true },
+    });
+    if (recent) {
+      return NextResponse.json(
+        {
+          error: `直近5分以内にこのメールアドレスから出願済みです（${recent.applicationNo}）。続きを行う場合は出願状況確認ページからご利用ください。`,
+        },
+        { status: 409 },
+      );
+    }
+
     // デフォルトバッチを取得して申請番号を採番
     let applicationNo: string;
     let cohortId: string | null = null;

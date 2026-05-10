@@ -103,6 +103,10 @@ export async function PATCH(request: NextRequest) {
     if (parsed.data.password) {
       data.passwordHash = await hashPassword(parsed.data.password);
       data.passwordVersion = PWD_VERSION_BCRYPT;
+      data.tokenVersion = { increment: 1 }; // 改密で全既存トークン無効化
+    }
+    if (parsed.data.isActive === false) {
+      data.tokenVersion = { increment: 1 }; // 無効化したアカウントの既存トークンも無効化
     }
     const user = await prisma.adminUser.update({
       where: { id },

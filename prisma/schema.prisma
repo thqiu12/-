@@ -15,6 +15,7 @@ model AdminUser {
   username        String   @unique
   passwordHash    String
   passwordVersion Int      @default(1) // 1 = legacy SHA-256, 2 = bcrypt
+  tokenVersion    Int      @default(1) // bump to invalidate all outstanding session tokens
   displayName     String
   role            String   @default("interviewer") // super_admin / admin / interviewer
   isActive        Boolean  @default(true)
