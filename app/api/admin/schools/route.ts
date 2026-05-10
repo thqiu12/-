@@ -4,6 +4,48 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { ApplySchoolUpsertSchema } from "@/lib/schemas";
 import { logError } from "@/lib/logger";
 
+type DeptInput = { name: string; duration?: string; courses?: string[] };
+
+async function syncDepartments(applySchoolId: string, depts: DeptInput[]) {
+  // 既存の active な学科を取得
+  const existing = await prisma.applyDepartment.findMany({
+    where: { applySchoolId },
+  });
+  const incomingNames = new Set(depts.map((d) => d.name));
+
+  // 入力にない学科は inactive にする（FK 参照を保つため削除はしない）
+  const stale = existing.filter((e) => e.isActive && !incomingNames.has(e.name));
+  if (stale.length > 0) {
+    await prisma.applyDepartment.updateMany({
+      where: { id: { in: stale.map((s) => s.id) } },
+      data: { isActive: false },
+    });
+  }
+
+  // 入力にある学科は upsert + active 化
+  for (let i = 0; i < depts.length; i++) {
+    const d = depts[i];
+    if (!d.name) continue;
+    await prisma.applyDepartment.upsert({
+      where: { applySchoolId_name: { applySchoolId, name: d.name } },
+      create: {
+        applySchoolId,
+        name: d.name,
+        duration: d.duration || "2年制",
+        courses: JSON.stringify(d.courses ?? []),
+        displayOrder: i,
+        isActive: true,
+      },
+      update: {
+        duration: d.duration || "2年制",
+        courses: JSON.stringify(d.courses ?? []),
+        displayOrder: i,
+        isActive: true,
+      },
+    });
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) {
@@ -12,16 +54,26 @@ export async function GET(request: NextRequest) {
   try {
     const schools = await prisma.applySchool.findMany({
       orderBy: { displayOrder: "asc" },
+      include: {
+        applyDepartments: {
+          where: { isActive: true },
+          orderBy: { displayOrder: "asc" },
+        },
+      },
     });
-    const result = schools.map((s) => {
-      let departments: unknown[] = [];
-      try {
-        departments = JSON.parse(s.departments);
-      } catch {
-        departments = [];
-      }
-      return { ...s, departments };
-    });
+    const result = schools.map((s) => ({
+      ...s,
+      departments: s.applyDepartments.map((d) => ({
+        id: d.id,
+        name: d.name,
+        duration: d.duration,
+        courses: (() => {
+          try { return JSON.parse(d.courses); } catch { return []; }
+        })(),
+      })),
+      // 内部 FK は表に出さない
+      applyDepartments: undefined,
+    }));
     return NextResponse.json(result);
   } catch (e) {
     logError("GET /api/admin/schools", e);
@@ -46,6 +98,7 @@ export async function POST(request: NextRequest) {
     const school = await prisma.applySchool.create({
       data: { ...rest, departments: JSON.stringify(departments) },
     });
+    await syncDepartments(school.id, departments as DeptInput[]);
     return NextResponse.json(school, { status: 201 });
   } catch (e: unknown) {
     logError("POST /api/admin/schools", e);
@@ -81,6 +134,9 @@ export async function PUT(request: NextRequest) {
         ...(departments !== undefined && { departments: JSON.stringify(departments) }),
       },
     });
+    if (departments !== undefined) {
+      await syncDepartments(id, departments as DeptInput[]);
+    }
     return NextResponse.json(updated);
   } catch (e) {
     logError("PUT /api/admin/schools", e);
@@ -94,8 +150,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
   try {
-    // フロントエンドは body の {id} で送ってくるが、後方互換のため
-    // ?id= クエリ文字列も許容する。
     const fromQuery = new URL(request.url).searchParams.get("id");
     let fromBody: string | null = null;
     if (!fromQuery) {
@@ -108,6 +162,15 @@ export async function DELETE(request: NextRequest) {
     }
     const id = fromQuery || fromBody;
     if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
+
+    // ApplySchool に紐づく Application があれば削除を拒否（snapshot 保持のため）
+    const cnt = await prisma.application.count({ where: { applySchoolId: id } });
+    if (cnt > 0) {
+      return NextResponse.json(
+        { error: `この学校には ${cnt} 件の申請が紐付いているため削除できません。「無効化」をお試しください。` },
+        { status: 409 },
+      );
+    }
     await prisma.applySchool.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {

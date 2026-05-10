@@ -5,13 +5,29 @@ import { CohortCreateSchema, CohortPatchSchema } from "@/lib/schemas";
 import { logError } from "@/lib/logger";
 import type { Prisma } from "@prisma/client";
 
-function buildData(parsed: Prisma.CohortCreateInput | Prisma.CohortUpdateInput, body: Record<string, unknown>) {
+async function buildData(
+  parsed: Prisma.CohortCreateInput | Prisma.CohortUpdateInput,
+  body: Record<string, unknown>,
+) {
   const d: Record<string, unknown> = { ...parsed };
   if ("acceptStart" in body) {
     d.acceptStart = body.acceptStart ? new Date(body.acceptStart as string) : null;
   }
   if ("acceptEnd" in body) {
     d.acceptEnd = body.acceptEnd ? new Date(body.acceptEnd as string) : null;
+  }
+  // schoolKey から applySchoolId を派生
+  if ("schoolKey" in body) {
+    const key = body.schoolKey as string | null;
+    if (key) {
+      const s = await prisma.applySchool.findUnique({
+        where: { schoolKey: key },
+        select: { id: true },
+      });
+      d.applySchoolId = s?.id ?? null;
+    } else {
+      d.applySchoolId = null;
+    }
   }
   return d;
 }
@@ -47,7 +63,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const data = buildData(parsed.data as Prisma.CohortCreateInput, raw);
+    const data = await buildData(parsed.data as Prisma.CohortCreateInput, raw);
 
     const cohort = await prisma.$transaction(async (tx) => {
       if (parsed.data.isDefault) {
@@ -79,7 +95,7 @@ export async function PATCH(request: NextRequest) {
         { status: 400 },
       );
     }
-    const data = buildData(parsed.data as Prisma.CohortUpdateInput, raw);
+    const data = await buildData(parsed.data as Prisma.CohortUpdateInput, raw);
 
     const cohort = await prisma.$transaction(async (tx) => {
       if (parsed.data.isDefault) {

@@ -5,6 +5,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { ApplicationCreateSchema } from "@/lib/schemas";
 import { ENV } from "@/lib/env";
+import { resolveSchoolFk } from "@/lib/school-fk";
 
 // 学生へ出願番号確認メール送信
 async function sendStudentConfirmation(application: {
@@ -319,13 +320,28 @@ export async function POST(request: NextRequest) {
     // Allow partial submissions with status '書類待ち' (from apply flow Step 2 → Step 3)
     const submittedStatus = body.status === "書類待ち" ? "書類待ち" : "受付中";
 
+    // 第一志望の FK 解決（snapshot 文字列も canonical 値で上書き）
+    const primary = await resolveSchoolFk({
+      schoolName: body.schoolName,
+      department: body.department,
+    });
+
+    // 並願校の FK 解決
+    const additionalRaw = (body.additionalSchools ?? []) as Array<{
+      schoolName: string; department: string; course?: string;
+    }>;
+    const additional = await Promise.all(
+      additionalRaw.map(async (s) => {
+        const fk = await resolveSchoolFk({ schoolName: s.schoolName, department: s.department });
+        return { ...s, ...fk };
+      }),
+    );
+
     const application = await prisma.application.create({
       data: {
-        id: require("crypto").randomUUID(),
         applicationNo,
         cohortId,
         status: submittedStatus,
-        updatedAt: new Date(),
         lastName: body.lastName,
         firstName: body.firstName,
         lastNameKana: body.lastNameKana,
@@ -344,8 +360,8 @@ export async function POST(request: NextRequest) {
         residenceExpiry: body.residenceExpiry || null,
         japaneseLevel: body.japaneseLevel,
         jlptCertified: body.jlptCertified || false,
-        schoolName: body.schoolName,
-        department: body.department,
+        schoolName: primary.schoolName || body.schoolName,
+        department: primary.department || body.department,
         course: body.course || null,
         enrollmentYear: body.enrollmentYear,
         enrollmentMonth: body.enrollmentMonth,
@@ -358,31 +374,29 @@ export async function POST(request: NextRequest) {
         examMode: body.examMode || "一般",
         referrerName: body.referrerName || null,
         referrerType: body.referrerType || null,
-        // 第一志望を ApplicationSchool に記録
+        applySchoolId: primary.applySchoolId,
+        applyDepartmentId: primary.applyDepartmentId,
         applicationSchools: {
           create: [
             {
-              id: require("crypto").randomUUID(),
               priority: 1,
-              schoolName: body.schoolName,
-              department: body.department,
+              schoolName: primary.schoolName || body.schoolName,
+              department: primary.department || body.department,
               course: body.course || null,
               enrollmentYear: body.enrollmentYear,
               enrollmentMonth: body.enrollmentMonth,
-              updatedAt: new Date(),
+              applySchoolId: primary.applySchoolId,
+              applyDepartmentId: primary.applyDepartmentId,
             },
-            // 並願校
-            ...((body.additionalSchools ?? []) as Array<{
-              schoolName: string; department: string; course?: string;
-            }>).map((s, idx) => ({
-              id: require("crypto").randomUUID(),
+            ...additional.map((s, idx) => ({
               priority: idx + 2,
               schoolName: s.schoolName,
               department: s.department,
               course: s.course || null,
               enrollmentYear: body.enrollmentYear,
               enrollmentMonth: body.enrollmentMonth,
-              updatedAt: new Date(),
+              applySchoolId: s.applySchoolId,
+              applyDepartmentId: s.applyDepartmentId,
             })),
           ],
         },

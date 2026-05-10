@@ -54,6 +54,20 @@ async function main() {
         { name: "鍼灸科", duration: "3年", courses: [] },
       ]),
     },
+    {
+      schoolKey: "tdb-tokyo-business",
+      name: "TDB東京ビジネス専門学校",
+      hojin: "学校法人 TDB学園",
+      icon: "💼",
+      displayOrder: 3,
+      departments: JSON.stringify([
+        { name: "ビジネスマネジメント科", duration: "2年制", courses: ["経営コース", "営業コース"] },
+        { name: "国際ビジネス科",       duration: "2年制", courses: ["貿易コース", "通訳・翻訳コース"] },
+        { name: "情報処理科",           duration: "2年制", courses: ["システム開発コース", "Web制作コース"] },
+        { name: "会計ビジネス科",       duration: "2年制", courses: ["税理士コース", "公認会計士コース"] },
+        { name: "ホテル・観光科",       duration: "2年制", courses: [] },
+      ]),
+    },
   ];
   for (const s of schools) {
     await prisma.applySchool.upsert({
@@ -132,12 +146,17 @@ async function main() {
 
   // ── 6) EnrollmentQuota（学校×学科×年度） ───────────────────
   const quotaDefs = [
-    { schoolName: "中央ゼミナール",     department: "日本語科",   enrollmentYear: "2026", quota: 60 },
-    { schoolName: "中央ゼミナール",     department: "理科進学科", enrollmentYear: "2026", quota: 30 },
-    { schoolName: "中央ゼミナール",     department: "文科進学科", enrollmentYear: "2026", quota: 25 },
-    { schoolName: "神奈川柔整鍼灸専門学校", department: "柔道整復科", enrollmentYear: "2026", quota: 40 },
-    { schoolName: "神奈川柔整鍼灸専門学校", department: "鍼灸科",     enrollmentYear: "2026", quota: 35 },
-    { schoolName: "中央ゼミナール",     department: "日本語科",   enrollmentYear: "2027", quota: 80, memo: "次年度拡大予定" },
+    { schoolName: "中央ゼミナール",         department: "日本語科",            enrollmentYear: "2026", quota: 60 },
+    { schoolName: "中央ゼミナール",         department: "理科進学科",          enrollmentYear: "2026", quota: 30 },
+    { schoolName: "中央ゼミナール",         department: "文科進学科",          enrollmentYear: "2026", quota: 25 },
+    { schoolName: "神奈川柔整鍼灸専門学校",     department: "柔道整復科",          enrollmentYear: "2026", quota: 40 },
+    { schoolName: "神奈川柔整鍼灸専門学校",     department: "鍼灸科",              enrollmentYear: "2026", quota: 35 },
+    { schoolName: "TDB東京ビジネス専門学校",   department: "ビジネスマネジメント科", enrollmentYear: "2026", quota: 50 },
+    { schoolName: "TDB東京ビジネス専門学校",   department: "国際ビジネス科",       enrollmentYear: "2026", quota: 40 },
+    { schoolName: "TDB東京ビジネス専門学校",   department: "情報処理科",          enrollmentYear: "2026", quota: 60 },
+    { schoolName: "TDB東京ビジネス専門学校",   department: "会計ビジネス科",       enrollmentYear: "2026", quota: 30 },
+    { schoolName: "TDB東京ビジネス専門学校",   department: "ホテル・観光科",       enrollmentYear: "2026", quota: 30 },
+    { schoolName: "中央ゼミナール",         department: "日本語科",            enrollmentYear: "2027", quota: 80, memo: "次年度拡大予定" },
   ];
   for (const q of quotaDefs) {
     await prisma.enrollmentQuota.upsert({
@@ -290,6 +309,26 @@ async function main() {
       status: "受付中", cohortName: "2026年度 第1回 (神奈川柔整)",
       daysAgo: 1, examFeeStatus: "未払い",
       docTypes: ["証明写真（3×3cm）"],
+    },
+    {
+      suffix: "0013", lastName: "Park", firstName: "Sungho", lastNameKana: "パク", firstNameKana: "ソンホ",
+      nationality: "韓国", japaneseLevel: "N2", gender: "男性",
+      schoolName: "TDB東京ビジネス専門学校", department: "国際ビジネス科",
+      enrollmentYear: "2026",
+      applicationReason: "韓国でビジネスを学んだ後、日本でグローバルビジネスのキャリアを築きたいです。".repeat(3),
+      status: "書類確認中", cohortName: "2026年度 第1回 (中央ゼミナール)",
+      daysAgo: 4, examFeeStatus: "確認済み",
+      docTypes: ["証明写真（3×3cm）", "JLPT成績証明書", "高校卒業証明書"],
+    },
+    {
+      suffix: "0014", lastName: "周", firstName: "明傑", lastNameKana: "シュウ", firstNameKana: "メイケツ",
+      nationality: "中国", japaneseLevel: "N2", gender: "男性",
+      schoolName: "TDB東京ビジネス専門学校", department: "情報処理科",
+      enrollmentYear: "2026",
+      applicationReason: "プログラミングを本格的に学び、日本のIT企業で活躍したいと考えています。".repeat(3),
+      status: "合格", cohortName: "2026年度 第1回 (中央ゼミナール)", agentName: "東京中華教育センター",
+      daysAgo: 18, examFeeStatus: "確認済み",
+      docTypes: ["証明写真（3×3cm）", "最終学校の成績証明書", "JLPT成績証明書", "高校卒業証明書"],
     },
   ];
 

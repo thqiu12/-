@@ -36,7 +36,9 @@ model Cohort {
   round       Int      @default(1)      // 選考回数（例: 1）
   seqCounter  Int      @default(0)      // 発番済み連番（自動更新）
   // 学校・学科別受付設定
-  schoolKey   String?                   // null=全校共通, 値=特定校のみ（例: "chuo-seminar"）
+  schoolKey   String?                   // null=全校共通, 値=特定校のみ（後方互換用）
+  applySchoolId String?
+  applySchool   ApplySchool? @relation("CohortApplySchool", fields: [applySchoolId], references: [id])
   acceptStart DateTime?                 // 受付開始日時
   acceptEnd   DateTime?                 // 受付終了日時
 
@@ -137,13 +139,19 @@ model Application {
   japaneseLevel      String   // N1/N2/N3/N4/N5/なし
   jlptCertified      Boolean  @default(false)
 
-  // 志望校情報（第1志望 後方互換用）
+  // 志望校情報（第1志望 後方互換用）— 提出時のスナップショット文字列
   schoolName         String
   department         String
   course             String?
   enrollmentYear     String
   enrollmentMonth    String
   applicationReason  String
+
+  // FK — 第1志望の正規化参照
+  applySchoolId      String?
+  applySchool        ApplySchool?     @relation("ApplicationApplySchool", fields: [applySchoolId], references: [id])
+  applyDepartmentId  String?
+  applyDepartment    ApplyDepartment? @relation("ApplicationApplyDepartment", fields: [applyDepartmentId], references: [id])
 
   // 複数志望校
   applicationSchools ApplicationSchool[]
@@ -607,6 +615,7 @@ model ApplicationSchool {
   applicationId   String
   application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   priority        Int         // 1=第1志望, 2=第2志望, 3=第3志望
+  // スナップショット（提出時刻の表示用）
   schoolName      String
   department      String
   course          String?
@@ -614,10 +623,19 @@ model ApplicationSchool {
   enrollmentMonth String
   result          String?     // 合格/不合格/保留/辞退/null(未確定)
   memo            String?
+
+  // FK — 正規化された参照
+  applySchoolId      String?
+  applySchool        ApplySchool?     @relation("ApplicationSchoolApplySchool", fields: [applySchoolId], references: [id])
+  applyDepartmentId  String?
+  applyDepartment    ApplyDepartment? @relation("ApplicationSchoolApplyDepartment", fields: [applyDepartmentId], references: [id])
+
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   @@unique([applicationId, priority])
+  @@index([applySchoolId])
+  @@index([applyDepartmentId])
 }
 
 model FormFieldConfig {
@@ -645,21 +663,58 @@ model ApplySchool {
   icon         String   @default("🏫")
   isActive     Boolean  @default(true)
   displayOrder Int      @default(0)
-  departments  String             // JSON array: [{name, duration, courses:[]}]
+  departments  String             // JSON snapshot for backward compat; canonical source is ApplyDepartment
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  applyDepartments    ApplyDepartment[]
+  applications        Application[]       @relation("ApplicationApplySchool")
+  applicationSchools  ApplicationSchool[] @relation("ApplicationSchoolApplySchool")
+  enrollmentQuotas    EnrollmentQuota[]   @relation("EnrollmentQuotaApplySchool")
+  cohorts             Cohort[]            @relation("CohortApplySchool")
+}
+
+// 学校 × 学科の正規化テーブル（旧: ApplySchool.departments JSON）
+model ApplyDepartment {
+  id            String   @id @default(cuid())
+  applySchoolId String
+  applySchool   ApplySchool @relation(fields: [applySchoolId], references: [id], onDelete: Cascade)
+  name          String
+  duration      String   @default("2年制")
+  courses       String   @default("[]") // JSON array of course names
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  applications        Application[]       @relation("ApplicationApplyDepartment")
+  applicationSchools  ApplicationSchool[] @relation("ApplicationSchoolApplyDepartment")
+  enrollmentQuotas    EnrollmentQuota[]   @relation("EnrollmentQuotaApplyDepartment")
+
+  @@unique([applySchoolId, name])
+  @@index([applySchoolId])
 }
 
 // 定員管理（学校×学科×入学年度）
 model EnrollmentQuota {
-  id             String   @id @default(cuid())
-  schoolName     String   // 例: 中央ゼミナール
-  department     String   // 例: 理科進学科
-  enrollmentYear String   // 例: 2027
-  quota          Int      // 定員数
-  memo           String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String   @id @default(cuid())
+  // 後方互換: 学校名/学科名のスナップショット。書き込み時に FK から派生する。
+  schoolName        String
+  department        String
+  enrollmentYear    String   // 例: 2027
+  quota             Int
+  memo              String?
+
+  // FK — 新規データは必ずセット、旧データは backfill 後にセット
+  applySchoolId     String?
+  applySchool       ApplySchool?     @relation("EnrollmentQuotaApplySchool", fields: [applySchoolId], references: [id])
+  applyDepartmentId String?
+  applyDepartment   ApplyDepartment? @relation("EnrollmentQuotaApplyDepartment", fields: [applyDepartmentId], references: [id])
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([schoolName, department, enrollmentYear])
+  @@unique([applySchoolId, applyDepartmentId, enrollmentYear])
+  @@index([applySchoolId])
 }
