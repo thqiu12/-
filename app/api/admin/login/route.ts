@@ -71,19 +71,14 @@ export async function POST(request: NextRequest) {
     });
 
     response.cookies.set({ name: "admin_token", value: token, ...COOKIE_OPTS });
-    const uiCookie = {
+    response.cookies.set({
+      name: CSRF.COOKIE,
+      value: csrf,
       httpOnly: false,
       secure: ENV.isProd,
-      sameSite: "strict" as const,
+      sameSite: "strict",
       maxAge: COOKIE_OPTS.maxAge,
       path: "/",
-    };
-    response.cookies.set({ name: CSRF.COOKIE, value: csrf, ...uiCookie });
-    response.cookies.set({ name: "admin_role", value: user.role, ...uiCookie });
-    response.cookies.set({
-      name: "admin_display_name",
-      value: Buffer.from(user.displayName).toString("base64"),
-      ...uiCookie,
     });
     return response;
   } catch (error) {
@@ -95,6 +90,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
   for (const name of ["admin_token", CSRF.COOKIE, "admin_role", "admin_display_name"]) {
+    // admin_role / admin_display_name は旧クライアント互換のためクリアのみ実行
     response.cookies.set({
       name,
       value: "",

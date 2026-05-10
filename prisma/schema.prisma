@@ -190,6 +190,11 @@ model Application {
   enrollmentProcedure EnrollmentProcedure?
   enrollmentSignature EnrollmentSignature?
   interviewFeedbacks  InterviewFeedback[]
+
+  @@index([email])
+  @@index([status, createdAt])
+  @@index([cohortId])
+  @@index([agentId])
 }
 
 model Agent {
@@ -216,6 +221,8 @@ model Document {
   fileSize      Int
   mimeType      String
   uploadedAt    DateTime    @default(now())
+
+  @@index([applicationId])
 }
 
 model AdminNote {
@@ -225,6 +232,8 @@ model AdminNote {
   content       String
   createdAt     DateTime    @default(now())
   author        String      @default("管理者")
+
+  @@index([applicationId, createdAt])
 }
 
 model EnrollmentProcedure {
@@ -407,6 +416,10 @@ model Student {
   homeworkSubmissions HomeworkSubmission[]
   certificateRequests CertificateRequest[]
   chatMessages        ChatMessage[]
+
+  @@index([schoolId, classId])
+  @@index([status])
+  @@index([email])
 }
 
 // 時間割
@@ -462,6 +475,9 @@ model Attendance {
   createdAt       DateTime @default(now())
 
   @@unique([studentId, timetableSlotId, date])
+  @@index([studentId, date])
+  @@index([date])
+  @@index([subjectId, date])
 }
 
 // 欠席届・休暇申請
@@ -539,14 +555,6 @@ model CertificateRequest {
   updatedAt   DateTime @updatedAt
 }
 
-// AdminUserに担当校を追加
-model AdminSchool {
-  id        String @id @default(cuid())
-  adminId   String
-  schoolId  String
-  @@unique([adminId, schoolId])
-}
-
 // 年間カレンダーイベント
 model CalendarEvent {
   id          String   @id @default(cuid())
@@ -588,6 +596,8 @@ model ChatMessage {
   message     String
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
+
+  @@index([studentId, createdAt])
 }
 
 // 複数志望校

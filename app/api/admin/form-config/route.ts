@@ -15,22 +15,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId") || null;
 
-    // デフォルトフィールドをupsert（存在しない場合のみ挿入）
+    // 不足しているデフォルトフィールドを一括挿入
     const existingKeys = await prisma.formFieldConfig.findMany({
       where: { schoolId: null },
       select: { fieldKey: true },
     });
-    const existingKeySet = new Set(existingKeys.map(e => e.fieldKey));
-    const missing = FORM_FIELD_DEFAULTS.filter(f => !existingKeySet.has(f.fieldKey));
+    const existingKeySet = new Set(existingKeys.map((e) => e.fieldKey));
+    const missing = FORM_FIELD_DEFAULTS.filter((f) => !existingKeySet.has(f.fieldKey));
     if (missing.length > 0) {
-      for (const f of missing) {
-        const exists = await prisma.formFieldConfig.findFirst({ where: { fieldKey: f.fieldKey, schoolId: null } });
-        if (!exists) {
-          await prisma.formFieldConfig.create({
-            data: { id: require('crypto').randomUUID(), fieldKey: f.fieldKey, label: f.label, section: f.section, isEnabled: true, isRequired: f.isRequired, displayOrder: f.displayOrder, fieldType: f.fieldType, schoolId: null, updatedAt: new Date() },
-          });
-        }
-      }
+      await prisma.formFieldConfig.createMany({
+        data: missing.map((f) => ({
+          fieldKey: f.fieldKey,
+          label: f.label,
+          section: f.section,
+          isEnabled: true,
+          isRequired: f.isRequired,
+          displayOrder: f.displayOrder,
+          fieldType: f.fieldType,
+          schoolId: null,
+        })),
+      });
     }
 
     // Always fetch global configs (schoolId IS NULL)

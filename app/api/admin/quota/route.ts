@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin as checkAdmin } from "@/lib/auth";
+import { QuotaSchema } from "@/lib/schemas";
 
 // GET: 定員統計一覧
 export async function GET(request: NextRequest) {
@@ -100,15 +101,18 @@ export async function POST(request: NextRequest) {
   if (!checkAdmin(session)) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
   try {
-    const body = await request.json();
-    const { schoolName, department, enrollmentYear, quota, memo } = body;
-    if (!schoolName || !department || !enrollmentYear || quota == null) {
-      return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+    const parsed = QuotaSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
+    const { schoolName, department, enrollmentYear, quota, memo } = parsed.data;
     const q = await prisma.enrollmentQuota.upsert({
       where: { schoolName_department_enrollmentYear: { schoolName, department, enrollmentYear } },
-      update: { quota: Number(quota), memo: memo || null },
-      create: { id: require("crypto").randomUUID(), schoolName, department, enrollmentYear, quota: Number(quota), memo: memo || null, updatedAt: new Date() },
+      update: { quota, memo: memo ?? null },
+      create: { schoolName, department, enrollmentYear, quota, memo: memo ?? null },
     });
     return NextResponse.json(q, { status: 201 });
   } catch (e) {

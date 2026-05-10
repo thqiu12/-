@@ -87,16 +87,20 @@ function getEnrollmentStep(ep: EnrollmentSummary): { label: string; style: strin
   return { label: "⏳ 手続き中", style: "bg-gray-100 text-gray-600" };
 }
 
-function getCookie(name: string): string {
-  if (typeof document === "undefined") return "";
-  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return m ? m[2] : "";
+function useAdminRole(): string {
+  const [role, setRole] = useState("");
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((d) => setRole(d?.user?.role || ""))
+      .catch(() => {});
+  }, []);
+  return role;
 }
 
 function AccountManagementLink() {
-  const [show, setShow] = useState(false);
-  useEffect(() => { setShow(getCookie("admin_role") === "super_admin"); }, []);
-  if (!show) return null;
+  const role = useAdminRole();
+  if (role !== "super_admin") return null;
   return (
     <Link href="/admin/accounts" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">
       アカウント
@@ -105,8 +109,7 @@ function AccountManagementLink() {
 }
 
 function UserBadge() {
-  const [role, setRole] = useState("");
-  useEffect(() => { setRole(getCookie("admin_role")); }, []);
+  const role = useAdminRole();
   if (!role) return null;
   const ROLE_DISPLAY: Record<string, { label: string; icon: string }> = {
     super_admin: { label: "スーパー管理者", icon: "👑" },

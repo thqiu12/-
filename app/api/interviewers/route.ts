@@ -1,6 +1,8 @@
-import { getSession, isAdmin } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { getSession, isAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InterviewerCreateSchema, InterviewerPatchSchema } from "@/lib/schemas";
+import { logError } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(interviewers);
   } catch (e) {
-    console.error(e);
+    logError("GET /api/interviewers", e);
     return NextResponse.json({ error: "取得に失敗しました" }, { status: 500 });
   }
 }
@@ -21,14 +23,19 @@ export async function POST(request: NextRequest) {
   const session = await getSession(request);
   if (!isAdmin(session)) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   try {
-    const body = await request.json();
-    if (!body.name) return NextResponse.json({ error: "氏名は必須です" }, { status: 400 });
+    const parsed = InterviewerCreateSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
     const interviewer = await prisma.interviewer.create({
-      data: { id: require("crypto").randomUUID(), name: body.name, role: body.role || null, email: body.email || null },
+      data: { ...parsed.data, role: parsed.data.role ?? null, email: parsed.data.email ?? null },
     });
     return NextResponse.json(interviewer, { status: 201 });
   } catch (e) {
-    console.error(e);
+    logError("POST /api/interviewers", e);
     return NextResponse.json({ error: "作成に失敗しました" }, { status: 500 });
   }
 }
@@ -40,19 +47,17 @@ export async function PATCH(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
-    const body = await request.json();
-    const interviewer = await prisma.interviewer.update({
-      where: { id },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.role !== undefined && { role: body.role }),
-        ...(body.email !== undefined && { email: body.email }),
-        ...(body.isActive !== undefined && { isActive: body.isActive }),
-      },
-    });
+    const parsed = InterviewerPatchSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力エラー", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const interviewer = await prisma.interviewer.update({ where: { id }, data: parsed.data });
     return NextResponse.json(interviewer);
   } catch (e) {
-    console.error(e);
+    logError("PATCH /api/interviewers", e);
     return NextResponse.json({ error: "更新に失敗しました" }, { status: 500 });
   }
 }
@@ -67,7 +72,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.interviewer.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error(e);
+    logError("DELETE /api/interviewers", e);
     return NextResponse.json({ error: "削除に失敗しました" }, { status: 500 });
   }
 }

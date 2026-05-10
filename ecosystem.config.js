@@ -4,7 +4,7 @@ module.exports = {
       name: "senmon-nyuugaku",
       script: "node_modules/.bin/next",
       args: "start",
-      cwd: "/home/work/.openclaw/workspace/senmon-nyuugaku",
+      cwd: __dirname,
       instances: 1,
       autorestart: true,
       watch: false,

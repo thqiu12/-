@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin } from "@/lib/auth";
+import { logError } from "@/lib/logger";
+
+const PASS_STATUSES = ["合格", "補欠合格"];
+const REVIEWED_STATUSES = ["合格", "補欠合格", "不合格", "保留"];
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -12,30 +16,28 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const cohortId = searchParams.get("cohortId");
 
-    // cohortId指定時はCohortサマリーを返す
     if (cohortId) {
-      const cohortWhere = cohortId === "none"
-        ? { cohortId: null }
-        : { cohortId };
+      const cohortFilter = cohortId === "none" ? { cohortId: null } : { cohortId };
 
-      const allApps = await prisma.application.findMany({
-        where: cohortWhere,
-        include: {
-          documents: { select: { id: true } },
-        },
-      });
+      const [statusGroups, total, withDocs] = await Promise.all([
+        prisma.application.groupBy({
+          by: ["status"],
+          where: cohortFilter,
+          _count: { _all: true },
+        }),
+        prisma.application.count({ where: cohortFilter }),
+        prisma.application.count({
+          where: { ...cohortFilter, documents: { some: {} } },
+        }),
+      ]);
 
-      const total = allApps.length;
-      const passedCount = allApps.filter(a => a.status === "合格" || a.status === "補欠合格").length;
-      const reviewedCount = allApps.filter(a => ["合格", "補欠合格", "不合格", "保留"].includes(a.status)).length;
-      const passRate = reviewedCount > 0 ? passedCount / reviewedCount : null;
-      const withDocs = allApps.filter(a => a.documents.length > 0).length;
-      const docRate = total > 0 ? withDocs / total : null;
-
-      // ステータス別カウント
       const statusCounts: Record<string, number> = {};
-      for (const app of allApps) {
-        statusCounts[app.status] = (statusCounts[app.status] || 0) + 1;
+      let passedCount = 0;
+      let reviewedCount = 0;
+      for (const g of statusGroups) {
+        statusCounts[g.status] = g._count._all;
+        if (PASS_STATUSES.includes(g.status)) passedCount += g._count._all;
+        if (REVIEWED_STATUSES.includes(g.status)) reviewedCount += g._count._all;
       }
 
       return NextResponse.json({
@@ -43,43 +45,39 @@ export async function GET(request: NextRequest) {
           total,
           passedCount,
           reviewedCount,
-          passRate,
+          passRate: reviewedCount > 0 ? passedCount / reviewedCount : null,
           withDocs,
-          docRate,
+          docRate: total > 0 ? withDocs / total : null,
           statusCounts,
         },
       });
     }
 
-    // 全申請のステータス別カウント（全量）
-    const statusGroups = await prisma.application.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    });
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [statusGroups, todayCount, passedApps] = await Promise.all([
+      prisma.application.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      prisma.application.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.application.findMany({
+        where: { status: { in: PASS_STATUSES } },
+        select: {
+          enrollmentProcedure: {
+            select: { status: true, schoolConfirmed: true, admitLetterIssued: true },
+          },
+        },
+      }),
+    ]);
 
     const statusCounts: Record<string, number> = {};
     let total = 0;
     for (const g of statusGroups) {
-      statusCounts[g.status] = g._count.id;
-      total += g._count.id;
+      statusCounts[g.status] = g._count._all;
+      total += g._count._all;
     }
-
-    // 今日の申請数
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayCount = await prisma.application.count({
-      where: { createdAt: { gte: todayStart } },
-    });
-
-    // 入学手続き進捗（全量・合格/補欠合格のみ）
-    const passedApps = await prisma.application.findMany({
-      where: { status: { in: ["合格", "補欠合格"] } },
-      include: {
-        enrollmentProcedure: {
-          select: { status: true, schoolConfirmed: true, admitLetterIssued: true },
-        },
-      },
-    });
 
     const enrollmentStats = {
       announced: 0,
@@ -91,8 +89,12 @@ export async function GET(request: NextRequest) {
     for (const app of passedApps) {
       const ep = app.enrollmentProcedure;
       if (!ep) continue;
-      if (ep.admitLetterIssued) { enrollmentStats.admitLetterIssued++; continue; }
-      if (ep.schoolConfirmed === false && (ep.status === "STEP2完了" || ep.status === "STEP3完了" || ep.status === "完了")) {
+      if (ep.admitLetterIssued) {
+        enrollmentStats.admitLetterIssued++;
+        continue;
+      }
+      const isCompletedStage = ep.status === "STEP2完了" || ep.status === "STEP3完了" || ep.status === "完了";
+      if (!ep.schoolConfirmed && isCompletedStage) {
         enrollmentStats.schoolConfirmWaiting++;
       } else if (ep.status === "STEP1完了") {
         enrollmentStats.step2Waiting++;
@@ -103,14 +105,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      total,
-      statusCounts,
-      todayCount,
-      enrollmentStats,
-    });
+    return NextResponse.json({ total, statusCounts, todayCount, enrollmentStats });
   } catch (error) {
-    console.error("GET /api/applications/stats error:", error);
+    logError("GET /api/applications/stats", error);
     return NextResponse.json({ error: "統計の取得に失敗しました" }, { status: 500 });
   }
 }

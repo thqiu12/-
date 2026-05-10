@@ -82,15 +82,16 @@ function fmt(dt: string | null | undefined): string {
   return new Date(dt).toLocaleDateString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function getCookie(name: string): string {
-  if (typeof document === "undefined") return "";
-  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return m ? m[2] : "";
-}
-
 // ─── メインコンポーネント ─────────────────────────────────
 export default function EnrollmentManagementPage() {
   const router = useRouter();
+  const [adminRole, setAdminRole] = useState<string>("");
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((d) => setAdminRole(d?.user?.role || ""))
+      .catch(() => {});
+  }, []);
   const [rows, setRows] = useState<EnrollmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [stepFilter, setStepFilter] = useState("all");
@@ -184,7 +185,7 @@ export default function EnrollmentManagementPage() {
     fetchRows(); fetchCounts();
   };
 
-  const isSuperAdmin = getCookie("admin_role") === "super_admin" || getCookie("admin_role") === "admin";
+  const isSuperAdmin = adminRole === "super_admin" || adminRole === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50">
