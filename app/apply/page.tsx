@@ -1481,6 +1481,23 @@ function ApplyPageInner() {
           examMode: data.examMode || prev.examMode,
           referrerName: data.referrerName || prev.referrerName,
           referrerType: data.referrerType || prev.referrerType,
+          // 第2志望以降の学校情報を復元
+          additionalSchools: Array.isArray(data.applicationSchools)
+            ? (data.applicationSchools as Array<{
+                priority: number;
+                schoolName: string;
+                department: string;
+                course: string | null;
+              }>)
+                .filter((s) => s.priority > 1)
+                .sort((a, b) => a.priority - b.priority)
+                .map((s) => ({
+                  schoolId: "",
+                  schoolName: s.schoolName,
+                  department: s.department,
+                  course: s.course || "",
+                }))
+            : prev.additionalSchools,
         }));
         // 書類待ち → Step3、選考費未払い以外 → Step4
         if (data.examFeeStatus && data.examFeeStatus !== "未払い") {

@@ -39,6 +39,19 @@ export async function GET(request: NextRequest) {
             signerName: true,
           },
         },
+        applicationSchools: {
+          orderBy: { priority: "asc" },
+          select: {
+            id: true,
+            priority: true,
+            schoolName: true,
+            department: true,
+            course: true,
+            enrollmentYear: true,
+            enrollmentMonth: true,
+            result: true,
+          },
+        },
       },
     });
 
@@ -91,6 +104,7 @@ export async function GET(request: NextRequest) {
       referrerType: application.referrerType,
       examFeeStatus: application.examFeeStatus,
       documents: application.documents,
+      applicationSchools: application.applicationSchools,
       // 面接情報（面接待ちの場合のみ公開）
       interviewDate: application.status === "面接待ち" ? application.interviewDate : null,
       interviewTime: application.status === "面接待ち" ? application.interviewTime : null,

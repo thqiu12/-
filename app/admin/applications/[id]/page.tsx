@@ -676,12 +676,15 @@ export default function ApplicationDetailPage() {
   const saveDocCheck = async () => {
     setDocCheckSaving(true);
     try {
-      await fetch(`/api/applications/${id}`, {
-        method: "POST",
+      const res = await fetch(`/api/applications/${id}`, {
+        method: "PATCH",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({content: "[DOC_CHECKLIST]"+JSON.stringify(docCheckState), isInternal: true}),
+        body: JSON.stringify({addNote: "[DOC_CHECKLIST]" + JSON.stringify(docCheckState)}),
       });
+      if (!res.ok) throw new Error("保存に失敗しました");
       setDocCheckSaved(true); setTimeout(()=>setDocCheckSaved(false),2000);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "保存に失敗しました", "error");
     } finally { setDocCheckSaving(false); }
   };
 
@@ -1126,9 +1129,9 @@ export default function ApplicationDetailPage() {
         notes: writtenExamNotes,
       };
       const res = await fetch(`/api/applications/${id}`, {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "[WRITTEN_EXAM]" + JSON.stringify(examData), isInternal: true }),
+        body: JSON.stringify({ addNote: "[WRITTEN_EXAM]" + JSON.stringify(examData) }),
       });
       if (res.ok) {
         // Reload notes to reflect the new/updated entry

@@ -3,6 +3,14 @@ import { z } from "zod";
 const str = (max: number) => z.string().trim().min(1).max(max);
 const optStr = (max: number) => z.string().trim().max(max).optional().nullable();
 
+// 空文字列を null に正規化したうえで email 形式を検証する。
+// 既存フォームは未入力欄を "" で送ってくるため、`.email()` 単体では
+// 「Invalid email」になってしまうことへの対策。
+const optEmail = z.preprocess(
+  (v) => (v === "" || v === undefined ? null : v),
+  z.string().email().max(254).nullable(),
+);
+
 export const JapaneseLevelEnum = z.enum(["N1", "N2", "N3", "N4", "N5", "なし"]);
 export const GenderEnum = z.enum(["男性", "女性", "その他"]);
 export const ExamModeEnum = z.enum(["一般", "指定推薦", "特待生"]);
@@ -82,7 +90,7 @@ export const NotificationSchema = z.object({
   to: z.string().email().max(254),
   applicantName: str(100),
   applicationNo: str(50),
-  applicantEmail: z.string().email().max(254).optional(),
+  applicantEmail: optEmail.optional(),
   interviewDate: optStr(20),
   interviewTime: optStr(20),
   interviewPlace: optStr(200),
@@ -157,11 +165,18 @@ export const FeePatchSchema = z
     examFeeStatus: FeeStatusEnum.optional(),
     examFeeAmount: z.number().int().nonnegative().optional(),
     examFeeReceiptUrl: z
-      .string()
-      .max(500)
-      .refine((u) => u.startsWith("/uploads/") || u.startsWith("https://"), "URL must be /uploads/* or https")
-      .optional()
-      .nullable(),
+      .preprocess(
+        (v) => (v === "" || v === undefined ? null : v),
+        z
+          .string()
+          .max(500)
+          .refine(
+            (u) => u.startsWith("/uploads/") || u.startsWith("https://"),
+            "URL must be /uploads/* or https",
+          )
+          .nullable(),
+      )
+      .optional(),
     examFeeNote: optStr(500),
   })
   .strict();
@@ -169,7 +184,7 @@ export const FeePatchSchema = z
 export const InterviewerCreateSchema = z.object({
   name: str(100),
   role: optStr(100),
-  email: z.string().email().max(254).optional().nullable(),
+  email: optEmail.optional(),
 });
 export const InterviewerPatchSchema = InterviewerCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
@@ -194,7 +209,7 @@ export const AgentCreateSchema = z.object({
   name: str(100),
   country: z.string().trim().max(100).optional().default(""),
   contactName: optStr(100),
-  contactEmail: z.string().email().max(254).optional().nullable(),
+  contactEmail: optEmail.optional(),
   notes: optStr(2000),
 });
 export const AgentPatchSchema = AgentCreateSchema.partial().extend({ isActive: z.boolean().optional() });

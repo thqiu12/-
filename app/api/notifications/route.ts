@@ -17,7 +17,9 @@ function getPortalUrl(applicationNo: string, email: string): string {
 const e = escapeHtml;
 
 function buildSubjectAndHtml(payload: NotificationPayload): { subject: string; html: string } {
-  const { applicantName, applicationNo, applicantEmail = payload.to } = payload;
+  const { applicantName, applicationNo } = payload;
+  // optEmail は "" を null に正規化する → to へフォールバック
+  const applicantEmail = payload.applicantEmail || payload.to;
   const portalUrl = getPortalUrl(applicationNo, applicantEmail);
   const portalUrlSafe = e(portalUrl);
   const applicantNameSafe = e(applicantName);
@@ -245,10 +247,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const body: NotificationPayload = {
-      ...parsed.data,
-      applicantEmail: parsed.data.applicantEmail || parsed.data.to,
-    };
+    const body: NotificationPayload = parsed.data;
 
     const smtpHost = process.env.SMTP_HOST;
     const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
