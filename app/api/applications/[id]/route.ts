@@ -156,11 +156,15 @@ export async function PATCH(
       }
 
       if (body.addNote) {
+        const user = session ? await tx.adminUser.findUnique({
+          where: { id: session.userId },
+          select: { displayName: true, username: true },
+        }) : null;
         await tx.adminNote.create({
           data: {
             applicationId: params.id,
             content: body.addNote,
-            author: session?.userId ?? "管理者",
+            author: user?.displayName || user?.username || "管理者",
           },
         });
       }

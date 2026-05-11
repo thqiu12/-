@@ -83,14 +83,18 @@ async function main() {
     { name: "2026年度 第1回 (中央ゼミナール)", year: 2026, round: 1, schoolKey: "chuo-seminar", isDefault: true, status: "受付中" },
     { name: "2026年度 第2回 (中央ゼミナール)", year: 2026, round: 2, schoolKey: "chuo-seminar", isDefault: false, status: "受付中" },
     { name: "2026年度 第1回 (神奈川柔整)", year: 2026, round: 1, schoolKey: "kanagawa-judo", isDefault: false, status: "選考中" },
+    { name: "2026年度 第1回 (TDB)", year: 2026, round: 1, schoolKey: "tdb-tokyo-business", isDefault: false, status: "受付中" },
     { name: "2025年度 第3回", year: 2025, round: 3, schoolKey: null, isDefault: false, status: "完了" },
   ];
+  const allSchoolsForCohort = await prisma.applySchool.findMany();
+  const schoolKeyToId = new Map(allSchoolsForCohort.map((s) => [s.schoolKey, s.id]));
   const cohortMap = new Map<string, string>();
   for (const c of cohortDefs) {
+    const data = { ...c, applySchoolId: c.schoolKey ? schoolKeyToId.get(c.schoolKey) ?? null : null };
     const existing = await prisma.cohort.findFirst({ where: { name: c.name } });
     const saved = existing
-      ? await prisma.cohort.update({ where: { id: existing.id }, data: c })
-      : await prisma.cohort.create({ data: c });
+      ? await prisma.cohort.update({ where: { id: existing.id }, data })
+      : await prisma.cohort.create({ data });
     cohortMap.set(c.name, saved.id);
   }
   console.log(`  cohort: ${cohortDefs.length} 件`);
@@ -158,15 +162,24 @@ async function main() {
     { schoolName: "TDB東京ビジネス専門学校",   department: "ホテル・観光科",       enrollmentYear: "2026", quota: 30 },
     { schoolName: "中央ゼミナール",         department: "日本語科",            enrollmentYear: "2027", quota: 80, memo: "次年度拡大予定" },
   ];
+  // FK 解決マップ（学校→部署）
+  const schoolsWithDepts = await prisma.applySchool.findMany({ include: { applyDepartments: true } });
+  const fkOf = (schoolName: string, deptName: string) => {
+    const s = schoolsWithDepts.find((x) => x.name === schoolName);
+    const d = s?.applyDepartments.find((x) => x.name === deptName && x.isActive);
+    return { applySchoolId: s?.id ?? null, applyDepartmentId: d?.id ?? null };
+  };
   for (const q of quotaDefs) {
+    const fk = fkOf(q.schoolName, q.department);
+    const data = { ...q, ...fk };
     await prisma.enrollmentQuota.upsert({
       where: {
         schoolName_department_enrollmentYear: {
           schoolName: q.schoolName, department: q.department, enrollmentYear: q.enrollmentYear,
         },
       },
-      update: q,
-      create: q,
+      update: data,
+      create: data,
     });
   }
   console.log(`  enrollmentQuota: ${quotaDefs.length} 件`);
@@ -335,11 +348,26 @@ async function main() {
   const today = new Date();
   let created = 0;
 
+  // FK 解決用のマップを構築
+  const allSchools = await prisma.applySchool.findMany({ include: { applyDepartments: true } });
+  const fkLookup = (schoolName: string, deptName: string): { sid: string | null; did: string | null } => {
+    const s = allSchools.find((x) => x.name === schoolName);
+    if (!s) return { sid: null, did: null };
+    const d = s.applyDepartments.find((x) => x.name === deptName && x.isActive);
+    return { sid: s.id, did: d?.id ?? null };
+  };
+
   for (const d of demos) {
     const createdAt = new Date(today.getTime() - d.daysAgo * 24 * 60 * 60 * 1000);
     const cohortId = d.cohortName ? cohortMap.get(d.cohortName) : null;
     const agentId = d.agentName ? agentMap.get(d.agentName) : null;
     const applicationNo = `DEMO-${d.suffix}`;
+
+    const primaryFk = fkLookup(d.schoolName, d.department);
+    const additionalFks = (d.additionalSchools ?? []).map((s) => ({
+      ...s,
+      ...fkLookup(s.schoolName, s.department),
+    }));
 
     const app = await prisma.application.create({
       data: {
@@ -347,6 +375,8 @@ async function main() {
         status: d.status,
         createdAt,
         updatedAt: createdAt,
+        applySchoolId: primaryFk.sid,
+        applyDepartmentId: primaryFk.did,
         lastName: d.lastName, firstName: d.firstName,
         lastNameKana: d.lastNameKana, firstNameKana: d.firstNameKana,
         birthDate: "2003-04-15", gender: d.gender,
@@ -373,10 +403,14 @@ async function main() {
               priority: 1, schoolName: d.schoolName, department: d.department, course: null,
               enrollmentYear: d.enrollmentYear, enrollmentMonth: "4",
               result: d.status === "合格" || d.status === "補欠合格" ? d.status : null,
+              applySchoolId: primaryFk.sid,
+              applyDepartmentId: primaryFk.did,
             },
-            ...(d.additionalSchools ?? []).map((s, i) => ({
+            ...additionalFks.map((s, i) => ({
               priority: i + 2, schoolName: s.schoolName, department: s.department, course: s.course || null,
               enrollmentYear: d.enrollmentYear, enrollmentMonth: "4", result: null,
+              applySchoolId: s.sid,
+              applyDepartmentId: s.did,
             })),
           ],
         },
