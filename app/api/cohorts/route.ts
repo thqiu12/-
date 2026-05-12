@@ -16,6 +16,16 @@ async function buildData(
   if ("acceptEnd" in body) {
     d.acceptEnd = body.acceptEnd ? new Date(body.acceptEnd as string) : null;
   }
+  // examModeTuitionAmounts: object 渡された場合は JSON 文字列に正規化
+  if ("examModeTuitionAmounts" in body) {
+    const v = body.examModeTuitionAmounts;
+    if (v === null || v === undefined || v === "") d.examModeTuitionAmounts = null;
+    else if (typeof v === "string") d.examModeTuitionAmounts = v;
+    else d.examModeTuitionAmounts = JSON.stringify(v);
+  }
+  if ("resultPublishedAt" in body) {
+    d.resultPublishedAt = body.resultPublishedAt ? new Date(body.resultPublishedAt as string) : null;
+  }
   // schoolKey から applySchoolId を派生
   if ("schoolKey" in body) {
     const key = body.schoolKey as string | null;

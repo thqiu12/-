@@ -394,6 +394,10 @@ interface Document {
   fileSize: number;
   mimeType: string;
   uploadedAt: string;
+  status?: string;
+  rejectReason?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
 }
 
 interface AdminNote {
@@ -530,6 +534,140 @@ function InfoRow({ label, value }: { label: string; value: string | boolean | nu
       <span className="col-span-2 text-gray-900">
         {value === true ? "あり" : value === false ? "なし" : value || <span className="text-gray-400">—</span>}
       </span>
+    </div>
+  );
+}
+
+function DocumentReviewRow({ doc, onReviewed }: { doc: Document; onReviewed: () => void | Promise<void> }) {
+  const { toast, confirm } = useUI();
+  const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  const status = doc.status || "提出済";
+
+  const STYLES: Record<string, string> = {
+    "提出済": "bg-gray-100 text-gray-700",
+    "確認済": "bg-green-100 text-green-800",
+    "差し戻し": "bg-red-100 text-red-800",
+  };
+
+  const setStatus = async (next: "確認済" | "差し戻し", rejectReason?: string) => {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/documents/${doc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next, rejectReason: rejectReason ?? null }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "更新に失敗しました");
+      }
+      toast(next === "確認済" ? "確認済にしました" : "差し戻しました", "success");
+      setRejecting(false);
+      setReason("");
+      await onReviewed();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "失敗", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-9 h-9 bg-navy-100 rounded-lg flex items-center justify-center shrink-0">
+            {doc.mimeType === "application/pdf" ? (
+              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium text-sm text-gray-800 truncate">{doc.docType}</p>
+              <span className={`status-badge ${STYLES[status]}`}>{status}</span>
+            </div>
+            <p className="text-xs text-gray-500 truncate">{doc.originalName} · {formatFileSize(doc.fileSize)}</p>
+            <p className="text-xs text-gray-400">{formatDateTimeJP(doc.uploadedAt)}</p>
+            {status === "差し戻し" && doc.rejectReason && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1">
+                差し戻し理由: {doc.rejectReason}
+              </p>
+            )}
+            {doc.reviewedBy && status !== "提出済" && (
+              <p className="text-xs text-gray-400 mt-0.5">確認: {doc.reviewedBy} ({doc.reviewedAt ? formatDateTimeJP(doc.reviewedAt) : ""})</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={doc.filePath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-navy-700 hover:text-navy-900 text-xs font-medium bg-white border border-gray-300 hover:border-navy-400 px-2.5 py-1.5 rounded-lg"
+          >
+            ⬇ 閲覧
+          </a>
+          {status !== "確認済" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                const ok = await confirm({ title: "書類を確認済にする", message: `「${doc.docType}」を確認済にしますか?`, okLabel: "確認済" });
+                if (!ok) return;
+                await setStatus("確認済");
+              }}
+              className="text-xs font-medium bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+            >
+              ✓ 確認済
+            </button>
+          )}
+          {status !== "差し戻し" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setRejecting(true)}
+              className="text-xs font-medium bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+            >
+              ✗ 差し戻し
+            </button>
+          )}
+        </div>
+      </div>
+      {rejecting && (
+        <div className="mt-2 pt-2 border-t border-gray-200 space-y-2">
+          <textarea
+            placeholder="差し戻し理由を入力してください（学生に表示されます）"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="form-input text-sm min-h-[64px]"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => { setRejecting(false); setReason(""); }}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              disabled={busy || !reason.trim()}
+              onClick={() => setStatus("差し戻し", reason.trim())}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+            >
+              差し戻す
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1570,42 +1708,17 @@ export default function ApplicationDetailPage() {
               ) : (
                 <div className="space-y-2">
                   {application.documents.map((doc) => (
-                    <div
+                    <DocumentReviewRow
                       key={doc.id}
-                      className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-navy-100 rounded-lg flex items-center justify-center">
-                          {doc.mimeType === "application/pdf" ? (
-                            <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-gray-800">{doc.docType}</p>
-                          <p className="text-xs text-gray-500">
-                            {doc.originalName} · {formatFileSize(doc.fileSize)}
-                          </p>
-                          <p className="text-xs text-gray-400">{formatDateTimeJP(doc.uploadedAt)}</p>
-                        </div>
-                      </div>
-                      <a
-                        href={doc.filePath}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-navy-700 hover:text-navy-900 text-sm font-medium bg-white border border-gray-300 hover:border-navy-400 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        ダウンロード
-                      </a>
-                    </div>
+                      doc={doc}
+                      onReviewed={async () => {
+                        const r = await fetch(`/api/applications/${application.id}`);
+                        if (r.ok) {
+                          const d = await r.json();
+                          setApplication(d);
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}

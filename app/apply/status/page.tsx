@@ -59,6 +59,9 @@ interface ApplicationStatus {
     fileName: string;
     originalName: string;
     uploadedAt: string;
+    status?: string;
+    rejectReason?: string | null;
+    reviewedAt?: string | null;
   }[];
   interviewDate: string | null;
   interviewTime: string | null;
@@ -66,6 +69,9 @@ interface ApplicationStatus {
   interviewNotes: string | null;
   enrollmentProcedure: EnrollmentProcedure | null;
   enrollmentSignature: EnrollmentSignature | null;
+  resultPublishedAt?: string | null;
+  resultEmbargoed?: boolean;
+  email: string;
 }
 
 const PROGRESS_STEPS = [
@@ -1083,17 +1089,64 @@ function StatusPageInner() {
                   <p className="text-sm font-semibold text-gray-700 mb-2">
                     提出書類（{result.documents.filter(d => !d.docType.startsWith("入学手続き_")).length}件）
                   </p>
-                  <div className="space-y-1">
-                    {result.documents.filter(d => !d.docType.startsWith("入学手続き_")).map((doc) => (
-                      <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600">
-                        <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span>{doc.docType}</span>
-                        <span className="text-gray-400">— {doc.originalName}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    {result.documents.filter(d => !d.docType.startsWith("入学手続き_")).map((doc) => {
+                      const ds = doc.status || "提出済";
+                      const BAR: Record<string, string> = {
+                        "提出済": "bg-gray-50 border-gray-200",
+                        "確認済": "bg-green-50 border-green-200",
+                        "差し戻し": "bg-red-50 border-red-300",
+                      };
+                      const BADGE: Record<string, string> = {
+                        "提出済": "bg-gray-200 text-gray-700",
+                        "確認済": "bg-green-600 text-white",
+                        "差し戻し": "bg-red-600 text-white",
+                      };
+                      return (
+                        <div key={doc.id} className={`border rounded-lg px-3 py-2 ${BAR[ds]}`}>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className={`status-badge ${BADGE[ds]}`}>{ds}</span>
+                            <span className="font-medium text-gray-800">{doc.docType}</span>
+                            <span className="text-gray-400 text-xs truncate">— {doc.originalName}</span>
+                          </div>
+                          {ds === "差し戻し" && doc.rejectReason && (
+                            <div className="mt-1.5 text-xs text-red-800 bg-white rounded px-2 py-1.5">
+                              <span className="font-bold">差し戻し理由：</span>{doc.rejectReason}
+                              <p className="text-gray-500 mt-0.5">再度同じ書類を「続きをする」からアップロードし直してください。</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
+              )}
+
+              {/* 受験票ダウンロード（受付中・書類確認中・面接待ち の学生用） */}
+              {["受付中", "書類確認中", "面接待ち"].includes(result.status) && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-bold text-blue-900">📋 受験票ダウンロード</p>
+                      <p className="text-xs text-blue-700 mt-0.5">写真と個人情報・試験会場を含む受験票 PDF を発行できます。試験当日は印刷してご持参ください。</p>
+                    </div>
+                    <a
+                      href={`/api/documents/exam-ticket?applicationNo=${encodeURIComponent(result.applicationNo)}&email=${encodeURIComponent(result.email)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg whitespace-nowrap"
+                    >
+                      ⬇ ダウンロード
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* 結果公開待ちのお知らせ */}
+              {result.resultEmbargoed && result.resultPublishedAt && (
+                <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm font-bold text-amber-900">⏳ 合否結果は <span className="font-mono">{new Date(result.resultPublishedAt).toLocaleString("ja-JP")}</span> に公開予定です</p>
+                  <p className="text-xs text-amber-700 mt-1">公開日時前は審査中と表示されます。公開後にこのページで結果をご確認いただけます。</p>
                 </div>
               )}
 

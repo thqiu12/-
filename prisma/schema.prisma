@@ -51,6 +51,10 @@ model Cohort {
   defaultTuitionBankInfo String?  // 振込先情報
   defaultStep2Deadline   String?  // 書類提出締切
   defaultStep3Deadline   String?  // 署名締切
+  // 選考モード別 学費 JSON: {"一般":"350000","指定推薦":"300000","特待生":"0"}
+  examModeTuitionAmounts String?
+  // 合否結果の公開日時。未来なら学生には status を「審査中」と返す
+  resultPublishedAt      DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   applications Application[]
@@ -230,6 +234,12 @@ model Document {
   fileSize      Int
   mimeType      String
   uploadedAt    DateTime    @default(now())
+
+  // 確認状態: 提出済 / 確認済 / 差し戻し
+  status        String      @default("提出済")
+  rejectReason  String?
+  reviewedAt    DateTime?
+  reviewedBy    String?
 
   @@index([applicationId])
 }

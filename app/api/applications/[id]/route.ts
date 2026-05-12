@@ -129,6 +129,14 @@ export async function PATCH(
             { name: "在留カードコピー", required: false, done: false },
             { name: "証明写真（4枚）", required: true, done: false },
           ]);
+          // 選考モード別の学費があれば、Application.examMode に対応する金額を採用
+          let tuitionAmount = cohort?.defaultTuitionAmount ?? null;
+          if (cohort?.examModeTuitionAmounts && updated.examMode) {
+            try {
+              const map = JSON.parse(cohort.examModeTuitionAmounts) as Record<string, string>;
+              if (map[updated.examMode]) tuitionAmount = map[updated.examMode];
+            } catch { /* ignore parse errors, fall back to default */ }
+          }
           await tx.enrollmentProcedure.create({
             data: {
               applicationId: params.id,
@@ -138,7 +146,7 @@ export async function PATCH(
               publishedAt: new Date(),
               docChecklist: defaultChecklist,
               tuitionPlan: cohort?.defaultTuitionPlan ?? "全額",
-              tuitionAmount: cohort?.defaultTuitionAmount ?? null,
+              tuitionAmount,
               tuitionAmount2: cohort?.defaultTuitionAmount2 ?? null,
               tuitionBankInfo: cohort?.defaultTuitionBankInfo ?? null,
               step1Deadline: cohort?.defaultTuitionDeadline ?? null,

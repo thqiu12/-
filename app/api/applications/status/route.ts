@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
             fileName: true,
             originalName: true,
             uploadedAt: true,
+            status: true,
+            rejectReason: true,
+            reviewedAt: true,
           },
         },
         enrollmentProcedure: true,
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
             result: true,
           },
         },
+        cohort: { select: { resultPublishedAt: true } },
       },
     });
 
@@ -62,11 +66,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 結果非公開期間中は合否を伏せる
+    const RESULT_STATUSES = ["合格", "不合格", "補欠合格"];
+    const publishAt = application.cohort?.resultPublishedAt ?? null;
+    const resultEmbargoed =
+      publishAt !== null && publishAt > new Date() && RESULT_STATUSES.includes(application.status);
+    const publicStatus = resultEmbargoed ? "審査中" : application.status;
+
     // 公開情報のみ返す
     return NextResponse.json({
       id: application.id,
       applicationNo: application.applicationNo,
-      status: application.status,
+      status: publicStatus,
+      resultPublishedAt: publishAt,
+      resultEmbargoed,
       createdAt: application.createdAt,
       updatedAt: application.updatedAt,
       // 個人情報（Resume フロー・Step5確認画面で使用）
@@ -110,8 +123,8 @@ export async function GET(request: NextRequest) {
       interviewTime: application.status === "面接待ち" ? application.interviewTime : null,
       interviewPlace: application.status === "面接待ち" ? application.interviewPlace : null,
       interviewNotes: application.status === "面接待ち" ? application.interviewNotes : null,
-      // 入学手続き（合格・補欠合格の場合は常に表示）
-      enrollmentProcedure: (application.status === "合格" || application.status === "補欠合格") && application.enrollmentProcedure
+      // 入学手続き（合格・補欠合格の場合は常に表示。結果非公開期間中は伏せる）
+      enrollmentProcedure: !resultEmbargoed && (application.status === "合格" || application.status === "補欠合格") && application.enrollmentProcedure
         ? {
             instructions: application.enrollmentProcedure.instructions,
             deadline: application.enrollmentProcedure.deadline,
@@ -143,7 +156,7 @@ export async function GET(request: NextRequest) {
           }
         : null,
       // 電子署名情報（合格・補欠合格の場合のみ）
-      enrollmentSignature: (application.status === "合格" || application.status === "補欠合格") && application.enrollmentSignature
+      enrollmentSignature: !resultEmbargoed && (application.status === "合格" || application.status === "補欠合格") && application.enrollmentSignature
         ? {
             id: application.enrollmentSignature.id,
             signedAt: application.enrollmentSignature.signedAt,

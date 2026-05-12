@@ -1,0 +1,216 @@
+import puppeteer from "puppeteer-core";
+import { existsSync, readFileSync } from "fs";
+import path from "path";
+import { escapeHtml } from "@/lib/security";
+import { ENV } from "@/lib/env";
+
+export interface ExamTicketData {
+  applicationNo: string;
+  applicantName: string;
+  applicantNameKana: string;
+  nationality: string;
+  birthDate: string;
+  gender: string;
+  schoolName: string;
+  department: string;
+  course: string;
+  enrollmentYear: string;
+  enrollmentMonth: string;
+  examMode: string;
+  interviewDate: string | null;
+  interviewTime: string | null;
+  interviewPlace: string | null;
+  interviewNotes: string | null;
+  // /uploads/<applicationId>/<filename>.png 等
+  photoFilePath: string | null;
+  issueDate: string;
+}
+
+function uploadRoot(): string {
+  return path.isAbsolute(ENV.UPLOAD_DIR) ? ENV.UPLOAD_DIR : path.join(process.cwd(), ENV.UPLOAD_DIR);
+}
+
+function readPhotoAsDataUri(photoFilePath: string | null): string | null {
+  if (!photoFilePath) return null;
+  // photoFilePath は "/uploads/<appId>/<filename>" の形式
+  const m = photoFilePath.match(/^\/uploads\/([^/]+)\/(.+)$/);
+  if (!m) return null;
+  const fullPath = path.join(uploadRoot(), m[1], m[2]);
+  if (!existsSync(fullPath)) return null;
+  try {
+    const buf = readFileSync(fullPath);
+    const ext = path.extname(fullPath).toLowerCase().replace(".", "");
+    const mime = ext === "png" ? "image/png"
+               : ext === "webp" ? "image/webp"
+               : ext === "pdf" ? null
+               : "image/jpeg";
+    if (!mime) return null;
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+function buildHTML(data: ExamTicketData): string {
+  const e = escapeHtml;
+  const photoUri = readPhotoAsDataUri(data.photoFilePath);
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+    background:#fff; color:#111;
+    width:794px; min-height:1123px;
+  }
+  .page { width:794px; min-height:1123px; padding:60px 70px; position:relative; }
+  .header { border-bottom:3px solid #1e3a5f; padding-bottom:14px; margin-bottom:28px; display:flex; justify-content:space-between; align-items:flex-end; }
+  .doc-title { font-size:32px; font-weight:700; color:#1e3a5f; letter-spacing:8px; }
+  .org { font-size:11px; color:#666; text-align:right; line-height:1.6; }
+  .grid { display:grid; grid-template-columns:200px 1fr; gap:24px; margin-bottom:32px; }
+  .photo-box {
+    width:200px; height:240px;
+    border:2px solid #1e3a5f;
+    display:flex; align-items:center; justify-content:center;
+    background:#f8fafc; overflow:hidden;
+  }
+  .photo-box img { width:100%; height:100%; object-fit:cover; }
+  .photo-box .placeholder { color:#999; font-size:11px; text-align:center; padding:8px; }
+  .info-table { font-size:13px; }
+  .info-row { display:flex; border-bottom:1px solid #e5e7eb; padding:10px 0; }
+  .info-label { width:110px; color:#666; font-weight:500; flex-shrink:0; }
+  .info-value { flex:1; color:#111; font-weight:600; }
+  .appno-box {
+    background:#1e3a5f; color:#fff;
+    padding:18px 24px; border-radius:6px;
+    margin-bottom:24px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .appno-box .label { font-size:12px; opacity:.8; }
+  .appno-box .value { font-size:28px; font-weight:700; letter-spacing:3px; }
+  .interview-card {
+    background:#fffbeb; border:2px solid #f59e0b;
+    padding:20px 24px; border-radius:8px;
+    margin-bottom:24px;
+  }
+  .interview-card h2 { font-size:14px; color:#92400e; margin-bottom:12px; }
+  .interview-grid { display:grid; grid-template-columns:80px 1fr; gap:8px 16px; font-size:13px; }
+  .interview-grid .k { color:#78350f; }
+  .interview-grid .v { color:#111; font-weight:600; }
+  .notes {
+    margin-top:24px; padding:16px 20px;
+    background:#f8fafc; border-left:4px solid #1e3a5f;
+    font-size:11px; line-height:1.8; color:#444;
+  }
+  .footer {
+    position:absolute; bottom:50px; left:70px; right:70px;
+    border-top:1px solid #ccc; padding-top:12px;
+    display:flex; justify-content:space-between;
+    font-size:10px; color:#888;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="doc-title">受　験　票</div>
+    <div class="org">
+      ${e(data.schoolName)}<br>
+      入学選考事務局
+    </div>
+  </div>
+
+  <div class="appno-box">
+    <div>
+      <div class="label">受験番号</div>
+      <div class="value">${e(data.applicationNo)}</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="label">志望区分</div>
+      <div class="value" style="font-size:14px;">${e(data.examMode)}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="photo-box">
+      ${photoUri
+        ? `<img src="${photoUri}" alt="証明写真" />`
+        : `<div class="placeholder">証明写真<br>3×3cm<br>（未提出）</div>`}
+    </div>
+    <div class="info-table">
+      <div class="info-row"><div class="info-label">氏名</div><div class="info-value">${e(data.applicantName)}</div></div>
+      <div class="info-row"><div class="info-label">フリガナ</div><div class="info-value">${e(data.applicantNameKana)}</div></div>
+      <div class="info-row"><div class="info-label">生年月日</div><div class="info-value">${e(data.birthDate)}</div></div>
+      <div class="info-row"><div class="info-label">性別</div><div class="info-value">${e(data.gender)}</div></div>
+      <div class="info-row"><div class="info-label">国籍</div><div class="info-value">${e(data.nationality)}</div></div>
+      <div class="info-row"><div class="info-label">志望校</div><div class="info-value">${e(data.schoolName)}</div></div>
+      <div class="info-row"><div class="info-label">志望学科</div><div class="info-value">${e(data.department)}${data.course ? ` / ${e(data.course)}` : ""}</div></div>
+      <div class="info-row"><div class="info-label">入学年度</div><div class="info-value">${e(data.enrollmentYear)}年${e(data.enrollmentMonth)}月</div></div>
+    </div>
+  </div>
+
+  ${data.interviewDate || data.interviewTime || data.interviewPlace ? `
+  <div class="interview-card">
+    <h2>📅 試験・面接日程</h2>
+    <div class="interview-grid">
+      <div class="k">日付</div><div class="v">${e(data.interviewDate) || "—"}</div>
+      <div class="k">時間</div><div class="v">${e(data.interviewTime) || "—"}</div>
+      <div class="k">場所</div><div class="v">${e(data.interviewPlace) || "—"}</div>
+      ${data.interviewNotes ? `<div class="k">注意</div><div class="v" style="white-space:pre-line;">${e(data.interviewNotes)}</div>` : ""}
+    </div>
+  </div>` : ""}
+
+  <div class="notes">
+    <strong>■ 受験当日の注意事項</strong><br>
+    ・本受験票と顔写真付きの身分証明書（在留カード・パスポート等）を必ず持参してください。<br>
+    ・試験開始 15 分前までに会場へお越しください。<br>
+    ・遅刻された場合、入室をお断りすることがあります。<br>
+    ・本受験票はそのまま会場でご提出ください。
+  </div>
+
+  <div class="footer">
+    <div>発行日: ${e(data.issueDate)}</div>
+    <div>※ 本受験票は本人以外の使用を固く禁じます</div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+export async function generateExamTicketPDF(data: ExamTicketData): Promise<Buffer> {
+  const possiblePaths = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    "/usr/local/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  ].filter(Boolean) as string[];
+  const executablePath = possiblePaths.find((p) => existsSync(p));
+  if (!executablePath) {
+    throw new Error("Chromium/Chrome not found. Set PUPPETEER_EXECUTABLE_PATH.");
+  }
+
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(buildHTML(data), { waitUntil: "domcontentloaded", timeout: 30000 });
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}

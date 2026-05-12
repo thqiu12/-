@@ -297,6 +297,15 @@ export const CohortCreateSchema = z.object({
   defaultTuitionBankInfo: optStr(500),
   defaultStep2Deadline: optStr(50),
   defaultStep3Deadline: optStr(50),
+  // 選考モード別の学費（一般/指定推薦/特待生 などのキーから金額文字列へのマップ）
+  examModeTuitionAmounts: z
+    .union([
+      z.string().max(2000),
+      z.record(z.string().max(20), z.string().max(50)),
+    ])
+    .optional()
+    .nullable(),
+  resultPublishedAt: isoDate.optional().nullable(),
 });
 export const CohortPatchSchema = CohortCreateSchema.partial();
 

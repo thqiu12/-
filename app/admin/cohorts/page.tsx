@@ -33,6 +33,10 @@ interface Cohort {
   schoolKey: string | null;
   acceptStart: string | null;
   acceptEnd: string | null;
+  // 選考モード別 学費 JSON
+  examModeTuitionAmounts: string | null;
+  // 合否公開日時
+  resultPublishedAt: string | null;
 }
 
 function getCohortStatusStyle(status: string): string {
@@ -79,6 +83,12 @@ export default function CohortsPage() {
   const [formTuitionBankInfo, setFormTuitionBankInfo] = useState("");
   const [formStep2Deadline, setFormStep2Deadline] = useState("");
   const [formStep3Deadline, setFormStep3Deadline] = useState("");
+  // 選考モード別学費
+  const [formTuitionIppan, setFormTuitionIppan] = useState("");
+  const [formTuitionSuisen, setFormTuitionSuisen] = useState("");
+  const [formTuitionTokutai, setFormTuitionTokutai] = useState("");
+  // 合否公開日時
+  const [formResultPublishedAt, setFormResultPublishedAt] = useState("");
 
   const fetchCohorts = async () => {
     setLoading(true);
@@ -112,6 +122,10 @@ export default function CohortsPage() {
     setFormTuitionBankInfo("");
     setFormStep2Deadline("");
     setFormStep3Deadline("");
+    setFormTuitionIppan("");
+    setFormTuitionSuisen("");
+    setFormTuitionTokutai("");
+    setFormResultPublishedAt("");
   };
 
   const openCreate = () => {
@@ -153,6 +167,15 @@ export default function CohortsPage() {
     setFormTuitionBankInfo(cohort.defaultTuitionBankInfo || "");
     setFormStep2Deadline(cohort.defaultStep2Deadline || "");
     setFormStep3Deadline(cohort.defaultStep3Deadline || "");
+    // examMode 別学費 JSON を展開
+    let modes: Record<string, string> = {};
+    try {
+      if (cohort.examModeTuitionAmounts) modes = JSON.parse(cohort.examModeTuitionAmounts);
+    } catch { /* ignore */ }
+    setFormTuitionIppan(modes["一般"] || "");
+    setFormTuitionSuisen(modes["指定推薦"] || "");
+    setFormTuitionTokutai(modes["特待生"] || "");
+    setFormResultPublishedAt(cohort.resultPublishedAt ? cohort.resultPublishedAt.slice(0, 16) : "");
     setFormError(null);
     setShowModal(true);
   };
@@ -162,6 +185,10 @@ export default function CohortsPage() {
     setSaving(true);
     setFormError(null);
     try {
+      const examModes: Record<string, string> = {};
+      if (formTuitionIppan.trim())  examModes["一般"]     = formTuitionIppan.trim();
+      if (formTuitionSuisen.trim()) examModes["指定推薦"]  = formTuitionSuisen.trim();
+      if (formTuitionTokutai.trim()) examModes["特待生"]   = formTuitionTokutai.trim();
       const payload = {
         name: formName.trim(),
         description: formDescription || null,
@@ -182,6 +209,8 @@ export default function CohortsPage() {
         defaultTuitionBankInfo:  formTuitionBankInfo || null,
         defaultStep2Deadline:    formStep2Deadline || null,
         defaultStep3Deadline:    formStep3Deadline || null,
+        examModeTuitionAmounts: Object.keys(examModes).length > 0 ? examModes : null,
+        resultPublishedAt: formResultPublishedAt ? new Date(formResultPublishedAt).toISOString() : null,
       };
       const url = editCohort ? `/api/cohorts?id=${editCohort.id}` : "/api/cohorts";
       const method = editCohort ? "PATCH" : "POST";
@@ -558,6 +587,38 @@ export default function CohortsPage() {
                     placeholder={"銀行名：〇〇銀行 〇〇支店\n口座種別：普通\n口座番号：1234567\n口座名義：学校法人〇〇学園"}
                     value={formTuitionBankInfo}
                     onChange={e => setFormTuitionBankInfo(e.target.value)}
+                  />
+                </div>
+
+                {/* 選考モード別 学費（合格時に自動セット） */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <label className="block text-xs font-bold text-gray-700 mb-2">選考モード別 学費（合格時に自動セット）</label>
+                  <p className="text-xs text-gray-500 mb-2">空のままにすれば上の「金額」がすべての学生に適用されます。</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">一般</label>
+                      <input type="text" className="form-input text-sm" placeholder="例: 350,000円" value={formTuitionIppan} onChange={e => setFormTuitionIppan(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">指定推薦</label>
+                      <input type="text" className="form-input text-sm" placeholder="例: 300,000円" value={formTuitionSuisen} onChange={e => setFormTuitionSuisen(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">特待生</label>
+                      <input type="text" className="form-input text-sm" placeholder="例: 0円" value={formTuitionTokutai} onChange={e => setFormTuitionTokutai(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 合否結果の公開日時 */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">合否結果の公開日時</label>
+                  <p className="text-xs text-gray-500 mb-2">この日時より前は、管理画面で合否を確定しても学生には「審査中」と表示されます。未指定なら即時公開。</p>
+                  <input
+                    type="datetime-local"
+                    className="form-input text-sm"
+                    value={formResultPublishedAt}
+                    onChange={e => setFormResultPublishedAt(e.target.value)}
                   />
                 </div>
               </div>
