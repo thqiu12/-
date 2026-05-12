@@ -543,7 +543,13 @@ function DocumentReviewRow({ doc, onReviewed }: { doc: Document; onReviewed: () 
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const status = doc.status || "提出済";
+
+  const isImage = doc.mimeType?.startsWith("image/");
+  const isPdf = doc.mimeType === "application/pdf";
+  const previewable = isImage || isPdf;
+  const fileUrl = `/api/documents/${doc.id}/file?inline=1`;
 
   const STYLES: Record<string, string> = {
     "提出済": "bg-gray-100 text-gray-700",
@@ -607,13 +613,20 @@ function DocumentReviewRow({ doc, onReviewed }: { doc: Document; onReviewed: () 
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {previewable && (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="text-navy-700 hover:text-navy-900 text-xs font-medium bg-white border border-gray-300 hover:border-navy-400 px-2.5 py-1.5 rounded-lg"
+            >
+              👁 プレビュー
+            </button>
+          )}
           <a
-            href={doc.filePath}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/api/documents/${doc.id}/file`}
             className="text-navy-700 hover:text-navy-900 text-xs font-medium bg-white border border-gray-300 hover:border-navy-400 px-2.5 py-1.5 rounded-lg"
           >
-            ⬇ 閲覧
+            ⬇ DL
           </a>
           {status !== "確認済" && (
             <button
@@ -665,6 +678,56 @@ function DocumentReviewRow({ doc, onReviewed }: { doc: Document; onReviewed: () 
             >
               差し戻す
             </button>
+          </div>
+        </div>
+      )}
+
+      {previewOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1002] flex items-center justify-center bg-black/70 p-4 animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setPreviewOpen(false); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col animate-pop-in">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+              <div className="min-w-0">
+                <p className="font-bold text-gray-800 text-sm truncate">{doc.docType}</p>
+                <p className="text-xs text-gray-500 truncate">{doc.originalName} · {formatFileSize(doc.fileSize)}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`/api/documents/${doc.id}/file`}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
+                >
+                  ⬇ ダウンロード
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(false)}
+                  aria-label="閉じる"
+                  className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 text-xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-50 p-4 flex items-center justify-center">
+              {isImage && (
+                <img
+                  src={fileUrl}
+                  alt={doc.docType}
+                  className="max-w-full max-h-[75vh] object-contain rounded shadow"
+                />
+              )}
+              {isPdf && (
+                <iframe
+                  src={fileUrl}
+                  className="w-full h-[75vh] rounded border border-gray-300 bg-white"
+                  title={doc.docType}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
