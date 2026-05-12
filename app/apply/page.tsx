@@ -1684,10 +1684,13 @@ function ApplyPageInner() {
 
   const handleSubmit = async () => {
     if (!applicationId) { setSubmitError("出願IDが見つかりません"); return; }
+    if (!form.email) { setSubmitError("メールアドレスが見つかりません。最初からやり直してください。"); return; }
     setSubmitting(true); setSubmitError(null);
     try {
       const res = await fetch(`/api/applications/${applicationId}/submit`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
       });
       if (!res.ok) {
         const d = await res.json();
