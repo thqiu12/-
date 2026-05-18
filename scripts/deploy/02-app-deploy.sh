@@ -121,19 +121,29 @@ npx prisma generate
 npx prisma db push --skip-generate
 
 # ------------------------------------------------------------
-# 5. 初期シード（冪等：既に admin がいれば作らない）
+# 5. seed 実行用に tsx を確保
+#   ts-node は Node 20 + ESM 環境で .ts 拡張子を解決できないことが多いので、
+#   ゼロ設定で動く tsx を使う。--no-save で package.json は汚さない。
 # ------------------------------------------------------------
-if [ -f prisma/seed.ts ]; then
-  log "初期管理者をシード"
-  npx ts-node prisma/seed.ts || log "seed 失敗（既に存在の可能性、続行）"
+if [ ! -x node_modules/.bin/tsx ]; then
+  log "tsx をインストール（seed 用）"
+  npm install --no-save --no-audit --no-fund tsx
 fi
 
 # ------------------------------------------------------------
-# 6. デモシード（任意：先生のテスト用。本番稼働時はコメントアウト）
+# 6. 初期シード（冪等：既に admin がいれば作らない）
+# ------------------------------------------------------------
+if [ -f prisma/seed.ts ]; then
+  log "初期管理者をシード"
+  npx tsx prisma/seed.ts || log "seed 失敗（既に存在の可能性、続行）"
+fi
+
+# ------------------------------------------------------------
+# 7. デモシード（任意：先生のテスト用。本番稼働時はコメントアウト）
 # ------------------------------------------------------------
 if [ -f prisma/demo-seed.ts ] && [ "${SEED_DEMO:-0}" = "1" ]; then
   log "デモデータをシード（SEED_DEMO=1 が指定された）"
-  npx ts-node prisma/demo-seed.ts
+  npx tsx prisma/demo-seed.ts
 fi
 
 # ------------------------------------------------------------
