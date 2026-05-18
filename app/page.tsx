@@ -46,12 +46,87 @@ const SCHOOLS = [
 ];
 
 const STEPS = [
-  { n: 1, icon: "👤", label: "個人情報", sub: "氏名・連絡先・住所" },
-  { n: 2, icon: "🏫", label: "志望校選択", sub: "学校・学科・コース" },
-  { n: 3, icon: "📎", label: "書類提出", sub: "成績・語学証明 等" },
-  { n: 4, icon: "💴", label: "選考費支払", sub: "¥20,000〜" },
-  { n: 5, icon: "✅", label: "確認・提出", sub: "内容確認後に送信" },
+  { n: 1, label: "個人情報",   sub: "氏名・連絡先・住所",    grad: "from-blue-500 to-blue-600",       chipText: "text-blue-700",    chipBg: "bg-blue-50 ring-blue-200" },
+  { n: 2, label: "志望校選択", sub: "学校・学科・コース",    grad: "from-indigo-500 to-indigo-600",   chipText: "text-indigo-700",  chipBg: "bg-indigo-50 ring-indigo-200" },
+  { n: 3, label: "書類提出",   sub: "成績・語学証明 等",      grad: "from-violet-500 to-violet-600",   chipText: "text-violet-700",  chipBg: "bg-violet-50 ring-violet-200" },
+  { n: 4, label: "選考費支払", sub: "¥20,000〜",              grad: "from-pink-500 to-rose-600",       chipText: "text-rose-700",    chipBg: "bg-rose-50 ring-rose-200" },
+  { n: 5, label: "確認・提出", sub: "内容確認後に送信",        grad: "from-emerald-500 to-emerald-600", chipText: "text-emerald-700", chipBg: "bg-emerald-50 ring-emerald-200" },
 ];
+
+/** STEPS のフローアイコン。SVG で統一感を出す。 */
+function StepIcon({ n, className = "w-7 h-7" }: { n: number; className?: string }) {
+  const common = { className, fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24" };
+  switch (n) {
+    case 1: // 個人情報
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+        </svg>
+      );
+    case 2: // 志望校（学校建物）
+      return (
+        <svg {...common}>
+          <path d="M3 21h18" />
+          <path d="M5 21V10l7-5 7 5v11" />
+          <path d="M10 21v-6h4v6" />
+          <path d="M9 11h.01M15 11h.01" />
+        </svg>
+      );
+    case 3: // 書類
+      return (
+        <svg {...common}>
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+          <path d="M14 3v5h5" />
+          <path d="M9 13h6M9 17h6M9 9h2" />
+        </svg>
+      );
+    case 4: // 円マーク（支払い）
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 8l4 5 4-5" />
+          <path d="M8 13h8M8 16h8M12 13v5" />
+        </svg>
+      );
+    case 5: // チェック
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 12l3 3 5-6" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function InfoIcon({ kind, className = "w-5 h-5" }: { kind: "tag" | "doc" | "yen"; className?: string }) {
+  const common = { className, fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24" };
+  if (kind === "tag")
+    return (
+      <svg {...common}>
+        <path d="M20 12l-8 8a2 2 0 0 1-2.8 0L3 13.8V4h9.8L20 11.2a.5.5 0 0 1 0 .8z" />
+        <circle cx="8" cy="9" r="1.5" />
+      </svg>
+    );
+  if (kind === "doc")
+    return (
+      <svg {...common}>
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" />
+        <path d="M9 13h6M9 17h6" />
+      </svg>
+    );
+  // yen
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 8l4 5 4-5" />
+      <path d="M8 13h8M8 16h8M12 13v5" />
+    </svg>
+  );
+}
 
 const durationColor: Record<string, string> = {
   "1年制": "bg-blue-100 text-blue-700",
@@ -233,36 +308,72 @@ export default function HomePage() {
           {/* 出願の流れ */}
           <section>
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">出願の流れ</h2>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-start gap-0 overflow-x-auto pb-2">
-                {STEPS.map((step, i) => (
-                  <div key={step.n} className="flex items-center flex-shrink-0">
-                    <div className="flex flex-col items-center text-center w-24 sm:w-28">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-2xl mb-2">
-                        {step.icon}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+
+              {/* ステップフロー */}
+              <div className="relative">
+                {/* 背景の接続グラデーション線（中央配置、アイコン裏） */}
+                <div
+                  aria-hidden
+                  className="hidden sm:block absolute top-7 left-[10%] right-[10%] h-[3px] rounded-full
+                             bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 opacity-30"
+                />
+
+                <ol className="relative grid grid-cols-5 gap-1 sm:gap-2">
+                  {STEPS.map((step) => (
+                    <li key={step.n} className="flex flex-col items-center text-center group">
+                      {/* アイコン円 */}
+                      <div
+                        className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl
+                                    bg-gradient-to-br ${step.grad} text-white
+                                    flex items-center justify-center shadow-md shadow-gray-900/5
+                                    ring-4 ring-white
+                                    transition-transform duration-200 group-hover:-translate-y-0.5`}
+                      >
+                        <StepIcon n={step.n} className="w-6 h-6 sm:w-7 sm:h-7" />
+                        {/* ステップ番号バッジ */}
+                        <span
+                          className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[10px] font-extrabold
+                                      bg-white text-gray-700 ring-1 ring-gray-200 flex items-center justify-center`}
+                        >
+                          {step.n}
+                        </span>
                       </div>
-                      <span className="text-xs text-blue-600 font-bold mb-0.5">STEP {step.n}</span>
-                      <span className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{step.label}</span>
-                      <span className="text-xs text-gray-400 leading-tight">{step.sub}</span>
-                    </div>
-                    {i < STEPS.length - 1 && (
-                      <div className="text-gray-300 text-xl mx-1 flex-shrink-0 mt-[-16px]">›</div>
-                    )}
-                  </div>
-                ))}
+
+                      {/* STEP X ラベル */}
+                      <span
+                        className={`mt-3 mb-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider
+                                    ring-1 ${step.chipBg} ${step.chipText}`}
+                      >
+                        STEP {step.n}
+                      </span>
+
+                      {/* 見出し・補足 */}
+                      <span className="text-[13px] font-bold text-gray-800 leading-tight">
+                        {step.label}
+                      </span>
+                      <span className="hidden sm:block mt-0.5 text-[11px] text-gray-400 leading-tight px-1">
+                        {step.sub}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
 
-              <div className="mt-5 pt-5 border-t border-gray-100 grid sm:grid-cols-3 gap-3">
+              {/* 補足カード */}
+              <div className="mt-7 pt-6 border-t border-gray-100 grid sm:grid-cols-3 gap-3">
                 {[
-                  { icon: "🏷️", label: "選考区分", val: "一般 / 指定推薦 / 特待生" },
-                  { icon: "📎", label: "必要書類", val: "証明写真・成績・出席・語学証明 等" },
-                  { icon: "💴", label: "選考費", val: "振込 or オンライン決済で完了" },
-                ].map(item => (
-                  <div key={item.label} className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
-                    <span className="text-xl flex-shrink-0">{item.icon}</span>
-                    <div>
-                      <p className="text-xs font-bold text-gray-500">{item.label}</p>
-                      <p className="text-xs text-gray-700">{item.val}</p>
+                  { kind: "tag" as const, label: "選考区分", val: "一般 / 指定推薦 / 特待生",                color: "text-indigo-600", bg: "bg-indigo-50/60" },
+                  { kind: "doc" as const, label: "必要書類", val: "証明写真・成績・出席・語学証明 等",        color: "text-violet-600", bg: "bg-violet-50/60" },
+                  { kind: "yen" as const, label: "選考費",   val: "振込 or オンライン決済で完了",            color: "text-rose-600",   bg: "bg-rose-50/60" },
+                ].map((item) => (
+                  <div key={item.label} className={`${item.bg} rounded-xl px-4 py-3 flex items-center gap-3 ring-1 ring-inset ring-gray-100`}>
+                    <span className={`flex-shrink-0 w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center ${item.color}`}>
+                      <InfoIcon kind={item.kind} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-gray-500 tracking-wide">{item.label}</p>
+                      <p className="text-xs text-gray-700 leading-snug">{item.val}</p>
                     </div>
                   </div>
                 ))}
