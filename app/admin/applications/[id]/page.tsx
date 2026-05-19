@@ -763,10 +763,6 @@ export default function ApplicationDetailPage() {
   const [statusSaved, setStatusSaved] = useState(false);
   const [sendResultEmail, setSendResultEmail] = useState(true);
 
-  // Memo
-  const [adminMemo, setAdminMemo] = useState("");
-  const [memoSaved, setMemoSaved] = useState(false);
-
   // Note
   const [newNote, setNewNote] = useState("");
   const [noteAdding, setNoteAdding] = useState(false);
@@ -908,7 +904,6 @@ export default function ApplicationDetailPage() {
         const data: Application = await res.json();
         setApplication(data);
         setSelectedStatus(data.status);
-        setAdminMemo(data.adminMemo || "");
         setSelectedAgentId(data.agentId || "");
         setSelectedCohortId(data.cohortId || "");
         setExamModeEdit(data.examMode || "一般");
@@ -1094,23 +1089,6 @@ export default function ApplicationDetailPage() {
       toast("更新に失敗しました", "error");
     } finally {
       setSchoolResultSaving(null);
-    }
-  };
-
-  const handleMemoSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/applications/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminMemo }),
-      });
-      if (res.ok) {
-        setMemoSaved(true);
-        setTimeout(() => setMemoSaved(false), 3000);
-      }
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -2083,34 +2061,7 @@ export default function ApplicationDetailPage() {
 
 
 
-            {/* 管理メモ・メモ履歴 - 入学手続きタブ以外で表示 */}
-            <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
-              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-3">
-                管理メモ
-              </h3>
-              <textarea
-                className="form-input min-h-[120px] resize-y text-sm mb-3"
-                placeholder="この申請に関する内部メモを記入してください（申請者には表示されません）"
-                value={adminMemo}
-                onChange={(e) => setAdminMemo(e.target.value)}
-              />
-              <button
-                onClick={handleMemoSave}
-                disabled={saving}
-                className="btn-primary w-full text-sm"
-              >
-                {memoSaved ? (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    保存しました
-                  </span>
-                ) : (
-                  "メモを保存"
-                )}
-              </button>
-            </div>
+            {/* 管理メモは「コメント・メモ履歴」に統合済みのため削除 */}
 
             {/* メモ履歴 */}
             <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">
