@@ -36,11 +36,24 @@ export async function POST(request: NextRequest) {
     if (!file) return NextResponse.json({ error: "ファイルが選択されていません" }, { status: 400 });
     if (!docTypeRaw) return NextResponse.json({ error: "書類種別が必要です" }, { status: 400 });
 
-    const docTypeParsed = DocTypeEnum.safeParse(docTypeRaw);
-    if (!docTypeParsed.success) {
-      return NextResponse.json({ error: "書類種別が不正です" }, { status: 400 });
+    // 入学手続きで使う書類は cohort 別チェックリストから動的に来るため、
+    // "入学手続き_" 接頭辞 + 0〜100 文字の表示名 を許可（白名單パターン）。
+    // 出願段階の書類は従来通り DocTypeEnum で厳密チェック。
+    let docType: string;
+    if (docTypeRaw.startsWith("入学手続き_")) {
+      const suffix = docTypeRaw.slice("入学手続き_".length);
+      // 空文字や過剰に長いものは弾く + パストラバーサル等の危険文字を拒否
+      if (suffix.length === 0 || suffix.length > 100 || /[\/\\\x00-\x1F]/.test(suffix)) {
+        return NextResponse.json({ error: "書類種別の名称が不正です" }, { status: 400 });
+      }
+      docType = docTypeRaw;
+    } else {
+      const docTypeParsed = DocTypeEnum.safeParse(docTypeRaw);
+      if (!docTypeParsed.success) {
+        return NextResponse.json({ error: "書類種別が不正です" }, { status: 400 });
+      }
+      docType = docTypeParsed.data;
     }
-    const docType = docTypeParsed.data;
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
