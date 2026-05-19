@@ -1,0 +1,176 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession, isAdmin, verifyStudentOwnership } from "@/lib/auth";
+import { ChangeRequestCreateSchema } from "@/lib/schemas";
+import { logError } from "@/lib/logger";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+
+/**
+ * 基本情報変更申請: 出願者が出願後に基本情報（住所・電話番号等）の変更を申請する。
+ * - POST : 学生本人 OR 管理者が新規作成
+ * - GET  : 学生本人（自分の申請）OR 管理者（全申請）が取得
+ *
+ * 承認/却下は /api/applications/[id]/change-requests/[reqId] (PATCH) で行う。
+ */
+
+// ChangeRequest で許可するフィールド一覧。
+// Application カラム名そのままで、機密または進行管理用フィールドは含めない。
+const ALLOWED_FIELDS: Record<string, { label: string; type: "text" | "date" | "tel" | "email" | "select"; options?: string[] }> = {
+  lastName:        { label: "姓",                type: "text" },
+  firstName:       { label: "名",                type: "text" },
+  lastNameKana:    { label: "姓（カナ）",         type: "text" },
+  firstNameKana:   { label: "名（カナ）",         type: "text" },
+  birthDate:       { label: "生年月日",          type: "date" },
+  gender:          { label: "性別",              type: "select", options: ["男性", "女性", "その他"] },
+  nationality:     { label: "国籍",              type: "text" },
+  phone:           { label: "電話番号",          type: "tel" },
+  email:           { label: "メールアドレス",     type: "email" },
+  postalCode:      { label: "郵便番号",          type: "text" },
+  prefecture:      { label: "都道府県",          type: "text" },
+  city:            { label: "市区町村",          type: "text" },
+  address:         { label: "番地",              type: "text" },
+  addressDetail:   { label: "建物名・部屋番号",   type: "text" },
+  residenceStatus: { label: "在留資格",          type: "text" },
+  residenceExpiry: { label: "在留期限",          type: "date" },
+  japaneseLevel:   { label: "日本語レベル",       type: "select", options: ["N1", "N2", "N3", "N4", "N5", "なし"] },
+};
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const session = await getSession(request);
+
+  try {
+    if (!isAdmin(session)) {
+      // 学生本人: applicationNo + email で所有権確認
+      const { searchParams } = new URL(request.url);
+      const applicationNo = searchParams.get("applicationNo");
+      const email = searchParams.get("email");
+      if (!applicationNo || !email) {
+        return NextResponse.json({ error: "認証情報が必要です" }, { status: 401 });
+      }
+      const own = await verifyStudentOwnership(applicationNo, email);
+      if (!own.valid || own.applicationId !== params.id) {
+        return NextResponse.json({ error: "アクセス権限がありません" }, { status: 403 });
+      }
+    }
+
+    const items = await prisma.changeRequest.findMany({
+      where: { applicationId: params.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(items);
+  } catch (e) {
+    logError("GET /api/applications/[id]/change-requests", e);
+    return NextResponse.json({ error: "取得に失敗しました" }, { status: 500 });
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`change-req:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "リクエストが多すぎます" }, { status: 429 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "不正な JSON" }, { status: 400 });
+  }
+
+  const session = await getSession(request);
+  const isAdminSession = isAdmin(session);
+
+  // 学生からの場合は所有権確認
+  if (!isAdminSession) {
+    const b = body as { applicationNo?: string; email?: string };
+    if (!b.applicationNo || !b.email) {
+      return NextResponse.json({ error: "認証情報が必要です" }, { status: 401 });
+    }
+    const own = await verifyStudentOwnership(b.applicationNo, b.email);
+    if (!own.valid || own.applicationId !== params.id) {
+      return NextResponse.json({ error: "アクセス権限がありません" }, { status: 403 });
+    }
+  }
+
+  const parsed = ChangeRequestCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "入力エラー", issues: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+
+  const { fieldKey, newValue, reason } = parsed.data;
+
+  // 許可フィールドのみ受付
+  const fieldDef = ALLOWED_FIELDS[fieldKey];
+  if (!fieldDef) {
+    return NextResponse.json({ error: "このフィールドは変更申請できません" }, { status: 400 });
+  }
+
+  // select 型の値域チェック
+  if (fieldDef.type === "select" && fieldDef.options && !fieldDef.options.includes(newValue)) {
+    return NextResponse.json({ error: `「${fieldDef.label}」の値が不正です` }, { status: 400 });
+  }
+
+  // 現在値を取得
+  const app = await prisma.application.findUnique({
+    where: { id: params.id },
+    select: {
+      [fieldKey]: true,
+    } as Record<string, true>,
+  });
+  if (!app) {
+    return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
+  }
+  const oldValueRaw = (app as Record<string, unknown>)[fieldKey];
+  const oldValue = oldValueRaw == null ? null : String(oldValueRaw);
+
+  if (oldValue === newValue) {
+    return NextResponse.json({ error: "現在の値と同じです" }, { status: 400 });
+  }
+
+  // 同じフィールドで申請中のリクエストが既にあれば、新規追加を拒否（重複防止）
+  const dup = await prisma.changeRequest.findFirst({
+    where: { applicationId: params.id, fieldKey, status: "申請中" },
+  });
+  if (dup) {
+    return NextResponse.json(
+      { error: `「${fieldDef.label}」は既に変更申請中です（リクエスト #${dup.id.slice(0, 8)}）` },
+      { status: 409 },
+    );
+  }
+
+  try {
+    const created = await prisma.changeRequest.create({
+      data: {
+        applicationId: params.id,
+        fieldKey,
+        fieldLabel: fieldDef.label,
+        oldValue,
+        newValue,
+        reason: reason || null,
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    logError("POST /api/applications/[id]/change-requests", e);
+    return NextResponse.json({ error: "申請の作成に失敗しました" }, { status: 500 });
+  }
+}
+
+// 許可フィールド定義を公開して、UI 側でドロップダウン生成等に再利用できるよう OPTIONS で返す
+export async function OPTIONS() {
+  return NextResponse.json({
+    fields: Object.entries(ALLOWED_FIELDS).map(([key, def]) => ({ key, ...def })),
+  });
+}
+
+// 同一モジュール内で使う ALLOWED_FIELDS を [reqId]/route.ts からも参照したいので export
+export { ALLOWED_FIELDS };

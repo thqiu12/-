@@ -25,6 +25,7 @@ export async function GET(
         agent: true,
         cohort: { select: { id: true, name: true } },
         applicationSchools: { orderBy: { priority: "asc" } },
+        changeRequests: { orderBy: { createdAt: "desc" } },
       },
     });
 
@@ -104,6 +105,7 @@ export async function PATCH(
       agent: true,
       cohort: { select: { id: true, name: true } },
       applicationSchools: { orderBy: { priority: "asc" } },
+      changeRequests: { orderBy: { createdAt: "desc" } },
     } as const;
 
     const application = await prisma.$transaction(async (tx) => {

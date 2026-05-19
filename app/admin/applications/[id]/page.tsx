@@ -514,6 +514,21 @@ interface Application {
   cohortId: string | null;
   cohort: { id: string; name: string } | null;
   applicationSchools: ApplicationSchoolEntry[];
+  changeRequests?: ChangeRequestEntry[];
+}
+
+interface ChangeRequestEntry {
+  id: string;
+  fieldKey: string;
+  fieldLabel: string;
+  oldValue: string | null;
+  newValue: string;
+  reason: string | null;
+  status: string; // 申請中 / 承認 / 却下
+  reviewerNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
 }
 
 interface ApplicationSchoolEntry {
@@ -1128,6 +1143,35 @@ export default function ApplicationDetailPage() {
       toast("試験日程の保存に失敗しました", "error");
     } finally {
       setSchoolResultSaving(null);
+    }
+  };
+
+  /** 変更申請を承認 / 却下 */
+  const handleChangeRequestReview = async (req: ChangeRequestEntry, action: "approve" | "reject") => {
+    if (!application) return;
+    const actionLabel = action === "approve" ? "承認" : "却下";
+    const reviewerNote = prompt(
+      `${req.fieldLabel}の変更を${actionLabel}します。\n\n現在: ${req.oldValue ?? "(空欄)"}\n希望: ${req.newValue}\n\n${actionLabel}メモ（任意）:`,
+      "",
+    );
+    if (reviewerNote === null) return; // キャンセル
+    try {
+      const res = await fetch(`/api/applications/${id}/change-requests/${req.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reviewerNote: reviewerNote || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "処理に失敗しました", "error");
+        return;
+      }
+      // ローカル state を更新 + 承認時は Application 本体も再取得
+      const refreshed = await fetch(`/api/applications/${id}`).then((r) => r.json());
+      setApplication(refreshed);
+      toast(`${actionLabel}しました`, "success");
+    } catch {
+      toast("ネットワークエラー", "error");
     }
   };
 
@@ -2268,6 +2312,83 @@ export default function ApplicationDetailPage() {
 
 
             {/* 管理メモは「コメント・メモ履歴」に統合済みのため削除 */}
+
+            {/* 基本情報の変更申請 */}
+            {application.changeRequests && application.changeRequests.length > 0 && (
+              <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card border-l-4 border-amber-400">
+                <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+                  </svg>
+                  基本情報の変更申請
+                  {application.changeRequests.filter(r => r.status === "申請中").length > 0 && (
+                    <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                      {application.changeRequests.filter(r => r.status === "申請中").length} 件 申請中
+                    </span>
+                  )}
+                </h3>
+                <div className="space-y-2">
+                  {application.changeRequests.map((r) => {
+                    const isPending = r.status === "申請中";
+                    const badge = r.status === "申請中" ? "bg-amber-100 text-amber-800"
+                                : r.status === "承認" ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-700";
+                    return (
+                      <div key={r.id} className={`rounded-lg p-3 ${isPending ? "bg-amber-50 border border-amber-200" : "bg-gray-50 border border-gray-200"}`}>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-xs font-bold text-gray-800">{r.fieldLabel}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${badge}`}>{r.status}</span>
+                        </div>
+                        <div className="text-xs space-y-0.5 mb-2">
+                          <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-gray-500">現在</span>
+                            <span className="text-gray-700 break-words">{r.oldValue ?? <span className="text-gray-400">(空欄)</span>}</span>
+                          </div>
+                          <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-gray-500">希望</span>
+                            <span className="text-gray-900 font-semibold break-words">{r.newValue}</span>
+                          </div>
+                          {r.reason && (
+                            <div className="grid grid-cols-[80px_1fr] gap-1">
+                              <span className="text-gray-500">理由</span>
+                              <span className="text-gray-700 break-words whitespace-pre-line">{r.reason}</span>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-[80px_1fr] gap-1 text-gray-400">
+                            <span>申請</span>
+                            <span>{formatDateTimeJP(r.createdAt)}</span>
+                          </div>
+                          {r.reviewedAt && (
+                            <div className="grid grid-cols-[80px_1fr] gap-1 text-gray-500">
+                              <span>レビュー</span>
+                              <span>{r.reviewedBy} ／ {formatDateTimeJP(r.reviewedAt)}</span>
+                            </div>
+                          )}
+                          {r.reviewerNote && (
+                            <div className="grid grid-cols-[80px_1fr] gap-1">
+                              <span className="text-gray-500">メモ</span>
+                              <span className="text-gray-700 whitespace-pre-line">{r.reviewerNote}</span>
+                            </div>
+                          )}
+                        </div>
+                        {isPending && (
+                          <div className="flex gap-2 pt-2 border-t border-amber-200">
+                            <button
+                              onClick={() => handleChangeRequestReview(r, "approve")}
+                              className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg"
+                            >✓ 承認して反映</button>
+                            <button
+                              onClick={() => handleChangeRequestReview(r, "reject")}
+                              className="flex-1 px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-red-300 text-xs font-bold rounded-lg"
+                            >却下</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* メモ履歴 */}
             <div style={{display: activeTab==="enrollment" ? "none" : undefined}} className="card">

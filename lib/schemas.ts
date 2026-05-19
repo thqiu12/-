@@ -123,6 +123,22 @@ export const AdminAccountUpdateSchema = z.object({
   password: z.string().min(8).max(200).optional(),
 });
 
+/** 基本情報変更申請: 学生→管理者の変更リクエスト作成 */
+export const ChangeRequestCreateSchema = z.object({
+  fieldKey: z.string().min(1).max(40),
+  newValue: z.string().min(1).max(500),
+  reason: optStr(500),
+  // 学生からの呼び出し時のみ
+  applicationNo: optStr(50),
+  email: optEmail.optional(),
+});
+
+/** 基本情報変更申請: 管理者によるレビュー（承認 / 却下） */
+export const ChangeRequestReviewSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  reviewerNote: optStr(500),
+});
+
 export const ChatPostSchema = z.object({
   applicationNo: optStr(50),
   studentNo: optStr(50),

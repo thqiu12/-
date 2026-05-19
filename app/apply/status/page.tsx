@@ -96,6 +96,26 @@ interface ApplicationStatus {
   }[];
 }
 
+interface ChangeRequest {
+  id: string;
+  fieldKey: string;
+  fieldLabel: string;
+  oldValue: string | null;
+  newValue: string;
+  reason: string | null;
+  status: string; // 申請中 / 承認 / 却下
+  reviewerNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+interface ChangeRequestFieldDef {
+  key: string;
+  label: string;
+  type: "text" | "date" | "tel" | "email" | "select";
+  options?: string[];
+}
+
 const PROGRESS_STEPS = [
   { key: "受付中", label: "受付中" },
   { key: "書類確認中", label: "書類確認中" },
@@ -573,6 +593,16 @@ function StatusPageInner() {
   const [signatureSaved, setSignatureSaved] = useState(false);
   const [signatureError, setSignatureError] = useState<string | null>(null);
 
+  // 基本情報変更申請
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  const [changeFieldDefs, setChangeFieldDefs] = useState<ChangeRequestFieldDef[]>([]);
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [crFieldKey, setCrFieldKey] = useState("");
+  const [crNewValue, setCrNewValue] = useState("");
+  const [crReason, setCrReason] = useState("");
+  const [crSubmitting, setCrSubmitting] = useState(false);
+  const [crError, setCrError] = useState<string | null>(null);
+
   // URLパラメータから自動ロード
   const fetchStatus = useCallback(async (appNo: string, emailAddr: string) => {
     setAutoLoading(true);
@@ -593,6 +623,20 @@ function StatusPageInner() {
           if (doc.docType.startsWith("入学手続き_")) uploaded[doc.docType] = true;
         }
         setUploadedDocs(uploaded);
+
+        // 並行して変更申請一覧 + フィールド定義を取得
+        try {
+          const crParams = new URLSearchParams({ applicationNo: appNo, email: emailAddr });
+          const [crRes, defRes] = await Promise.all([
+            fetch(`/api/applications/${data.id}/change-requests?${crParams}`),
+            fetch(`/api/applications/${data.id}/change-requests`, { method: "OPTIONS" }),
+          ]);
+          if (crRes.ok) setChangeRequests(await crRes.json());
+          if (defRes.ok) {
+            const d = await defRes.json();
+            setChangeFieldDefs(d.fields || []);
+          }
+        } catch { /* 失敗しても本体は表示する */ }
       }
     } catch {
       setError("ネットワークエラーが発生しました。");
@@ -624,6 +668,68 @@ function StatusPageInner() {
     await fetchStatus(applicationNo.trim(), email.trim());
     setLoading(false);
   };
+
+  /** 変更申請モーダルを開く（フィールド初期値を現在値でセット） */
+  const openChangeModal = (fieldKey: string) => {
+    if (!result) return;
+    setCrFieldKey(fieldKey);
+    const current = (result as unknown as Record<string, unknown>)[fieldKey];
+    setCrNewValue(current == null ? "" : String(current));
+    setCrReason("");
+    setCrError(null);
+    setShowChangeModal(true);
+  };
+
+  const submitChangeRequest = async () => {
+    if (!result) return;
+    if (!crFieldKey) { setCrError("項目を選択してください"); return; }
+    if (!crNewValue.trim()) { setCrError("新しい値を入力してください"); return; }
+    setCrSubmitting(true);
+    setCrError(null);
+    try {
+      const res = await fetch(`/api/applications/${result.id}/change-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationNo: result.applicationNo,
+          email,
+          fieldKey: crFieldKey,
+          newValue: crNewValue.trim(),
+          reason: crReason.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCrError(data.error || "申請に失敗しました");
+        return;
+      }
+      setChangeRequests((prev) => [data, ...prev]);
+      setShowChangeModal(false);
+      toast("変更申請を送信しました。管理者の確認をお待ちください。", "success");
+    } catch {
+      setCrError("ネットワークエラー");
+    } finally {
+      setCrSubmitting(false);
+    }
+  };
+
+  const withdrawChangeRequest = async (reqId: string) => {
+    if (!result) return;
+    const res = await fetch(`/api/applications/${result.id}/change-requests/${reqId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationNo: result.applicationNo, email }),
+    });
+    if (res.ok) {
+      setChangeRequests((prev) => prev.filter((r) => r.id !== reqId));
+      toast("申請を取り下げました", "info");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast(err.error || "取り下げに失敗しました", "error");
+    }
+  };
+
+  const currentFieldDef = changeFieldDefs.find((f) => f.key === crFieldKey);
 
   const handleEnrollComplete = async () => {
     if (!result) return;
@@ -1209,6 +1315,21 @@ function StatusPageInner() {
               })()}
 
               {/* 申請者情報 */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">申請者情報</p>
+                {result.status !== "完了" && result.status !== "辞退" && result.status !== "不合格" && (
+                  <button
+                    type="button"
+                    onClick={() => { setCrFieldKey(""); setCrNewValue(""); setCrReason(""); setCrError(null); setShowChangeModal(true); }}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    情報の変更を申請する
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                 <div>
                   <p className="text-gray-500">氏名</p>
@@ -1228,6 +1349,43 @@ function StatusPageInner() {
                   <p className="font-medium">{formatDate(result.createdAt)}</p>
                 </div>
               </div>
+
+              {/* 変更申請履歴（あれば表示） */}
+              {changeRequests.length > 0 && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+                  <p className="text-xs font-bold text-amber-900 mb-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    基本情報の変更申請（{changeRequests.length}件）
+                  </p>
+                  <ul className="space-y-1.5">
+                    {changeRequests.map((r) => {
+                      const badge = r.status === "申請中" ? "bg-amber-100 text-amber-800"
+                                 : r.status === "承認" ? "bg-green-100 text-green-800"
+                                 : "bg-red-100 text-red-700";
+                      return (
+                        <li key={r.id} className="bg-white rounded-lg px-3 py-2 text-xs border border-amber-100">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="font-semibold text-gray-800 flex-1 min-w-0 truncate">
+                              {r.fieldLabel}: 「{r.oldValue ?? "(空欄)"}」→「{r.newValue}」
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${badge}`}>{r.status}</span>
+                          </div>
+                          {r.reason && <p className="text-gray-500 text-[11px]">理由: {r.reason}</p>}
+                          {r.reviewerNote && <p className="text-gray-500 text-[11px]">管理者: {r.reviewerNote}</p>}
+                          {r.status === "申請中" && (
+                            <button
+                              onClick={() => withdrawChangeRequest(r.id)}
+                              className="mt-1 text-[10px] text-gray-500 hover:text-red-600"
+                            >取り下げる</button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
 
               {/* 提出書類 */}
               {result.documents.filter(d => !d.docType.startsWith("入学手続き_")).length > 0 && (
@@ -1897,6 +2055,115 @@ function StatusPageInner() {
           </>
         )}
       </main>
+
+      {/* 基本情報変更申請モーダル */}
+      {showChangeModal && result && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-navy-800">基本情報の変更を申請</h3>
+              <button
+                onClick={() => setShowChangeModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                aria-label="閉じる"
+              >×</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {crError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {crError}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-600 leading-relaxed">
+                変更したい項目を選び、新しい値と理由を入力してください。管理者が確認後、承認されると反映されます。
+              </p>
+
+              <div>
+                <label className="form-label">変更する項目 <span className="form-required">*</span></label>
+                <select
+                  className="form-input"
+                  value={crFieldKey}
+                  onChange={(e) => openChangeModal(e.target.value)}
+                >
+                  <option value="">選択してください</option>
+                  {changeFieldDefs.map((f) => (
+                    <option key={f.key} value={f.key}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {crFieldKey && (
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-xs text-gray-500">現在の値</p>
+                  <p className="text-sm font-medium text-gray-700 break-words">
+                    {(() => {
+                      const v = (result as unknown as Record<string, unknown>)[crFieldKey];
+                      return v == null || v === "" ? <span className="text-gray-400">(未設定)</span> : String(v);
+                    })()}
+                  </p>
+                </div>
+              )}
+
+              {crFieldKey && currentFieldDef && (
+                <div>
+                  <label className="form-label">新しい値 <span className="form-required">*</span></label>
+                  {currentFieldDef.type === "select" && currentFieldDef.options ? (
+                    <select className="form-input" value={crNewValue} onChange={(e) => setCrNewValue(e.target.value)}>
+                      <option value="">選択してください</option>
+                      {currentFieldDef.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={currentFieldDef.type === "tel" ? "tel" : currentFieldDef.type === "email" ? "email" : currentFieldDef.type === "date" ? "date" : "text"}
+                      className="form-input"
+                      value={crNewValue}
+                      onChange={(e) => setCrNewValue(e.target.value)}
+                      placeholder={currentFieldDef.label}
+                    />
+                  )}
+                </div>
+              )}
+
+              {crFieldKey && (
+                <div>
+                  <label className="form-label">変更理由（任意）</label>
+                  <textarea
+                    className="form-input min-h-[80px]"
+                    placeholder="例：転居のため住所を変更したい"
+                    value={crReason}
+                    onChange={(e) => setCrReason(e.target.value)}
+                    maxLength={500}
+                  />
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                <p className="font-bold mb-0.5">⚠️ 注意事項</p>
+                <ul className="space-y-0.5 list-disc list-inside">
+                  <li>管理者の承認後に反映されます（即時には変わりません）</li>
+                  <li>同じ項目を複数同時に申請することはできません</li>
+                  <li>志望校・学科の変更は本機能では受け付けていません</li>
+                </ul>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => setShowChangeModal(false)}
+                disabled={crSubmitting}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              >キャンセル</button>
+              <button
+                onClick={submitChangeRequest}
+                disabled={crSubmitting || !crFieldKey || !crNewValue.trim()}
+                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-lg"
+              >{crSubmitting ? "送信中..." : "変更を申請する"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

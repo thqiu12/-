@@ -204,10 +204,42 @@ model Application {
   enrollmentSignature EnrollmentSignature?
   interviewFeedbacks  InterviewFeedback[]
 
+  // 基本情報変更申請
+  changeRequests      ChangeRequest[]
+
   @@index([email])
   @@index([status, createdAt])
   @@index([cohortId])
   @@index([agentId])
+}
+
+// 出願者が出願後に基本情報の変更を申請するためのリクエスト。
+// 学生が POST → status=申請中 → 管理者が承認/却下。承認時に Application 本体を更新。
+model ChangeRequest {
+  id              String      @id @default(cuid())
+  applicationId   String
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  // 対象フィールドの内部キー（Application カラム名そのまま）
+  fieldKey        String
+  // 表示用ラベル（"電話番号" など）。snapshot として保持し、UI 表示でラベル定義が変わっても見れるように。
+  fieldLabel      String
+  // 変更前の値（DB 上の現在値）
+  oldValue        String?
+  // 変更希望値
+  newValue        String
+  // 学生からの理由・補足
+  reason          String?
+  // 申請中 / 承認 / 却下
+  status          String      @default("申請中")
+  // 管理者対応情報
+  reviewedBy      String?     // AdminUser.id or displayName
+  reviewedAt      DateTime?
+  reviewerNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([applicationId, status])
+  @@index([status, createdAt])
 }
 
 model Agent {
