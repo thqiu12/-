@@ -1712,6 +1712,58 @@ function ApplyPageInner() {
     } catch { setSubmitError("ネットワークエラー"); return false; }
   };
 
+  /**
+   * 現在のステップが「次へ進める状態か」を判定（read-only、setErrors しない）。
+   * 「次へ進む」ボタンの disabled に使う。validateStepN() と同じ条件のサブセット。
+   */
+  const isCurrentStepValid = (): boolean => {
+    if (currentStep === 1) {
+      if (isFieldRequired("lastName") && !form.lastName) return false;
+      if (isFieldRequired("firstName") && !form.firstName) return false;
+      if (isFieldRequired("lastNameKana") && !form.lastNameKana) return false;
+      if (isFieldRequired("firstNameKana") && !form.firstNameKana) return false;
+      if (isFieldRequired("birthDate") && !form.birthDate) return false;
+      if (isFieldRequired("gender") && !form.gender) return false;
+      if (isFieldRequired("nationality") && !form.nationality) return false;
+      if (isFieldRequired("phone") && !form.phone) return false;
+      if (isFieldEnabled("email")) {
+        if (isFieldRequired("email") && !form.email) return false;
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return false;
+      }
+      if (isFieldRequired("postalCode") && (!form.postalCode || form.postalCode.length !== 7)) return false;
+      if (isFieldRequired("prefecture") && !form.prefecture) return false;
+      if (isFieldRequired("city") && !form.city) return false;
+      if (isFieldRequired("address") && !form.address) return false;
+      if (isFieldRequired("japaneseLevel") && !form.japaneseLevel) return false;
+      return true;
+    }
+    if (currentStep === 2) {
+      if (!form.schoolId || !form.department) return false;
+      const dept = schools.find(s => s.id === form.schoolId)?.departments.find(d => d.name === form.department);
+      if (dept && dept.courses && dept.courses.length > 0 && !form.course) return false;
+      if (!form.enrollmentYear) return false;
+      if (isFieldRequired("applicationReason") && (!form.applicationReason || form.applicationReason.length < 300)) return false;
+      if (isFieldRequired("lastSchoolName") && !form.lastSchoolName) return false;
+      if (isFieldRequired("lastSchoolCountry") && !form.lastSchoolCountry) return false;
+      if (isFieldRequired("lastSchoolGraduate") && !form.lastSchoolGraduate) return false;
+      for (const add of form.additionalSchools) {
+        if (!add.department) return false;
+        const addDept = schools.find(s => s.id === add.schoolId)?.departments.find(d => d.name === add.department);
+        if (addDept && addDept.courses && addDept.courses.length > 0 && !add.course) return false;
+      }
+      return true;
+    }
+    if (currentStep === 3) {
+      if (!formConfig) return true;
+      const requiredFileFields = formConfig.filter(c => c.fieldType === "file" && c.isEnabled && c.isRequired);
+      return requiredFileFields.every(f => uploadedDocs.some(d => d.docType === f.label));
+    }
+    if (currentStep === 4) {
+      return examFeeStatus !== "未払い";
+    }
+    return true;
+  };
+
   const handleNext = async () => {
     setSubmitError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1745,7 +1797,15 @@ function ApplyPageInner() {
         });
       }
       setCurrentStep(4);
-    } else if (currentStep === 4) { setCurrentStep(5); }
+    } else if (currentStep === 4) {
+      // 選考費が未払いのまま確認画面に進ませない
+      if (examFeeStatus === "未払い") {
+        setErrors({ step4: "選考料の振込証明書をアップロードしてから次へ進んでください。" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      setCurrentStep(5);
+    }
   };
 
   const handleSubmit = async () => {
@@ -1971,14 +2031,32 @@ function ApplyPageInner() {
                   ← 前へ
                 </button>
               )}
-              {currentStep < 5 ? (
-                <button onClick={handleNext} disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition disabled:opacity-50 shadow-sm shadow-blue-200">
-                  {submitting ? (
-                    <><span className="animate-spin">⏳</span> 保存中...</>
-                  ) : currentStep === 4 ? "確認へ進む →" : "次へ進む →"}
-                </button>
-              ) : (
+              {currentStep < 5 ? (() => {
+                const valid = isCurrentStepValid();
+                return (
+                  <div className="flex flex-col items-end gap-1">
+                    <button
+                      onClick={handleNext}
+                      disabled={submitting || !valid}
+                      title={!valid ? "必須項目を入力してから進んでください" : ""}
+                      className={`flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl transition shadow-sm
+                        ${submitting || !valid
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                          : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200"
+                        }`}
+                    >
+                      {submitting ? (
+                        <><span className="animate-spin">⏳</span> 保存中...</>
+                      ) : currentStep === 4 ? "確認へ進む →" : "次へ進む →"}
+                    </button>
+                    {!valid && !submitting && (
+                      <span className="text-[11px] text-amber-700 font-medium">
+                        ⚠️ 必須項目を入力してから進んでください
+                      </span>
+                    )}
+                  </div>
+                );
+              })() : (
                 <button onClick={handleSubmit} disabled={submitting}
                   className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition shadow-sm shadow-green-200">
                   {submitting ? <><span className="animate-spin">⏳</span> 提出中...</> : "✅ 提出する"}
