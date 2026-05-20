@@ -285,6 +285,13 @@ export default function AdminDashboard() {
     window.open(`/api/applications/export?${params}`, "_blank");
   };
 
+  /** 試験日程表（筆記＋面接 全志望校）を CSV ダウンロード */
+  const handleScheduleExport = () => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    window.open(`/api/admin/schedule/export?${params}`, "_blank");
+  };
+
   const col = (key: string) => visibleCols[key] !== false;
 
   return (
@@ -576,12 +583,28 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* CSV */}
-            <button onClick={handleExport} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+            {/* CSV: 申請一覧 */}
+            <button
+              onClick={handleExport}
+              title="表示中の申請一覧を CSV ダウンロード"
+              className="btn-secondary flex items-center gap-2 whitespace-nowrap"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              CSV
+              申請一覧
+            </button>
+
+            {/* CSV: 試験日程表 */}
+            <button
+              onClick={handleScheduleExport}
+              title="筆記＋面接の試験日程を全志望校分まとめて CSV ダウンロード"
+              className="btn-secondary flex items-center gap-2 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              日程表
             </button>
           </div>
 

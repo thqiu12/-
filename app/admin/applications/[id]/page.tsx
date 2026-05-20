@@ -1137,6 +1137,7 @@ export default function ApplicationDetailPage() {
         body: JSON.stringify({ schoolId, ...patch }),
       });
       if (!res.ok) throw new Error("更新失敗");
+      const data = await res.json();
 
       setApplication((prev) => {
         if (!prev) return prev;
@@ -1150,6 +1151,16 @@ export default function ApplicationDetailPage() {
 
       setSchoolResultSaved(schoolId);
       setTimeout(() => setSchoolResultSaved(null), 2000);
+
+      // 日時重複の警告
+      if (Array.isArray(data.conflicts) && data.conflicts.length > 0) {
+        type ConflictSlot = { priority: number; schoolName: string; examType: string; date: string; time: string };
+        const labels = (data.conflicts as ConflictSlot[]).map((c) => {
+          const p = ["第1志望", "第2志望", "第3志望"][c.priority - 1] || `第${c.priority}志望`;
+          return `${p} ${c.examType} (${c.date} ${c.time})`;
+        });
+        toast(`⚠️ 日程重複: ${labels.join(" / ")}`, "warn");
+      }
     } catch {
       toast("試験日程の保存に失敗しました", "error");
     } finally {

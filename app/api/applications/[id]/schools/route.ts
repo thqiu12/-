@@ -81,7 +81,77 @@ export async function PATCH(
       data: updateData,
     });
 
-    return NextResponse.json(school);
+    // 日時の重複検知 — 同じ申請内の他の試験スロットと日付＋時刻が衝突するか確認。
+    // 警告のみ（保存はする）。admin が意図的に重複を許可するケースもあるため。
+    const conflicts: { schoolId: string; priority: number; schoolName: string; examType: "筆記試験" | "面接試験"; date: string; time: string }[] = [];
+    const isScheduleChange = Object.keys(updateData).some((k) =>
+      k.startsWith("interview") || k.startsWith("writtenExam"),
+    );
+    if (isScheduleChange) {
+      const app = await prisma.application.findUnique({
+        where: { id: params.id },
+        include: { applicationSchools: true },
+      });
+      if (app) {
+        type Slot = { schoolId: string; priority: number; schoolName: string; examType: "筆記試験" | "面接試験"; date: string; time: string };
+        const slots: Slot[] = [];
+
+        // Application-level の interview（第1志望が per-school 未設定の場合のフォールバック）
+        const p1 = app.applicationSchools.find((s) => s.priority === 1);
+        if (p1 && !p1.interviewDate && app.interviewDate && app.interviewTime) {
+          slots.push({
+            schoolId: p1.id,
+            priority: 1,
+            schoolName: p1.schoolName,
+            examType: "面接試験",
+            date: app.interviewDate,
+            time: app.interviewTime,
+          });
+        }
+
+        for (const s of app.applicationSchools) {
+          if (s.interviewDate && s.interviewTime) {
+            slots.push({
+              schoolId: s.id,
+              priority: s.priority,
+              schoolName: s.schoolName,
+              examType: "面接試験",
+              date: s.interviewDate,
+              time: s.interviewTime,
+            });
+          }
+          if (s.writtenExamDate && s.writtenExamTime && !s.writtenExamExempted) {
+            slots.push({
+              schoolId: s.id,
+              priority: s.priority,
+              schoolName: s.schoolName,
+              examType: "筆記試験",
+              date: s.writtenExamDate,
+              time: s.writtenExamTime,
+            });
+          }
+        }
+
+        // (date,time) でグループ化、重複しているものを抽出
+        const groups = new Map<string, Slot[]>();
+        for (const slot of slots) {
+          const key = `${slot.date}|${slot.time}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(slot);
+        }
+        for (const [, group] of groups) {
+          if (group.length > 1) {
+            // 全エントリを衝突として返す（admin UI が冒頭何件と表示）
+            conflicts.push(...group);
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ...school,
+      conflicts: conflicts.length > 0 ? conflicts : undefined,
+    });
   } catch (e) {
     console.error("PATCH /api/applications/[id]/schools error:", e);
     return NextResponse.json({ error: "更新に失敗しました" }, { status: 500 });
