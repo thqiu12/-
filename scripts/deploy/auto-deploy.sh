@@ -9,6 +9,8 @@
 #   - ビルド失敗時は pm2 reload しない（壊れた状態にしない）
 #   - 全部のステップをログに残す
 #
+#   ※ デプロイ確認用テストコミットあり（このコメント自体）
+#
 # 設定:
 #   AUTO_DEPLOY_BRANCH=chore/security-hardening （デフォルト）
 #   APP_DIR=/srv/senmon/app
