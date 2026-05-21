@@ -1,0 +1,144 @@
+name: Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main", "chore/security-hardening"]
+
+jobs:
+  # ============================================================
+  # 単体テスト + 業務ロジックテスト (Vitest)
+  # ============================================================
+  unit:
+    name: 単体テスト
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prepare test DB
+        run: npx prisma db push --skip-generate --accept-data-loss
+        env:
+          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+
+      - name: Run Vitest
+        run: npm run test:unit
+        env:
+          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+          SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
+          CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
+          NODE_ENV: "test"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage/
+          retention-days: 14
+
+  # ============================================================
+  # E2E + API テスト (Playwright)
+  # ============================================================
+  e2e:
+    name: E2E + API テスト
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prepare test DB + seed
+        run: |
+          npx prisma db push --skip-generate --accept-data-loss
+          npx tsx prisma/seed.ts
+          SEED_DEMO=1 npx tsx prisma/demo-seed.ts
+        env:
+          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+          SEED_ADMIN_USERNAME: "admin"
+          SEED_ADMIN_PASSWORD: "TestAdmin2026!"
+
+      - name: Build Next.js
+        run: NODE_OPTIONS="--max-old-space-size=2048" npm run build
+        env:
+          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+          SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
+          CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
+
+      - name: Run Playwright
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+          SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
+          CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
+          NEXT_PUBLIC_BASE_URL: "http://localhost:3070"
+          UPLOAD_DIR: "/tmp/senmon-test-uploads"
+          SEED_ADMIN_USERNAME: "admin"
+          SEED_ADMIN_PASSWORD: "TestAdmin2026!"
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload Playwright traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
+  # ============================================================
+  # ビルド検証（型エラー検出 — 過去 2 度刺さったので CI 化）
+  # ============================================================
+  typecheck:
+    name: 型・ビルド検証
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+      - name: Next.js build (型 + lint チェック)
+        run: NODE_OPTIONS="--max-old-space-size=2048" npm run build
+        env:
+          DATABASE_URL: "file:./build.db"
+          SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
+          CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
