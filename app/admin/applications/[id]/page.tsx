@@ -1661,7 +1661,7 @@ export default function ApplicationDetailPage() {
         {/* タブナビゲーション */}
         <div className="flex gap-1 mb-5 bg-white rounded-xl shadow-sm border border-gray-200 p-1 overflow-x-auto">
           {TABS.map(tab=>(
-            <button key={tab.key} onClick={()=>setActiveTab(tab.key)}
+            <button key={tab.key} data-testid={`tab-${tab.key}`} onClick={()=>setActiveTab(tab.key)}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab===tab.key?"bg-navy-700 text-white shadow":"text-gray-600 hover:bg-gray-100"}`}>
               {tab.label}
             </button>
@@ -2377,6 +2377,7 @@ export default function ApplicationDetailPage() {
                     }`}
                   >
                     <input
+                      data-testid={`status-radio-${s}`}
                       type="radio"
                       name="status"
                       value={s}
@@ -2433,6 +2434,7 @@ export default function ApplicationDetailPage() {
               })()}
 
               <button
+                data-testid="status-update-submit"
                 onClick={handleStatusUpdate}
                 disabled={saving || selectedStatus === application.status}
                 className="btn-primary w-full"
@@ -3179,6 +3181,7 @@ export default function ApplicationDetailPage() {
                   上記を承知の上で進める理由 <span className="form-required">*</span>
                 </label>
                 <textarea
+                  data-testid="status-override-reason"
                   className="form-input min-h-[80px] text-sm"
                   placeholder="例：書類は別途メールで受領済み / 選考費は来週入金予定のため事前に進める など"
                   value={statusOverrideReason}
@@ -3197,6 +3200,7 @@ export default function ApplicationDetailPage() {
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
               >キャンセル</button>
               <button
+                data-testid="status-override-confirm"
                 onClick={() => {
                   if (!statusOverrideReason.trim()) {
                     toast("理由を入力してください", "warn");

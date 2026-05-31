@@ -1,51 +1,64 @@
 /**
  * E2E: 学生出願フロー
  *
- * 注: 詳細な UI 自動化（フォーム入力・admin ログイン）は app/apply/page.tsx の
- * 実際の name 属性・id 属性に依存するためメンテナンス負荷が高い。
- * 当面は SKIP し、tests/e2e/smoke.spec.ts で「ページが 200 で表示される」最小限の検証のみ
- * CI に組み込む。フォーム自動入力は次フェーズで data-testid を仕込んでから復帰。
- *
- * 復帰時のアクション:
- *  - app/apply/page.tsx の各 input に data-testid="apply-lastName" 等を付与
- *  - 下の test.describe.skip を test.describe に戻し、locator を data-testid ベースに更新
+ * data-testid を利用した安定 selector で完全実装。
+ * カバー範囲:
+ *  - Step 1 未入力時の「次へ進む」ボタン disabled + 警告ヒント
+ *  - Step 1 を埋めるとボタン enable + ステップ進行
+ *  - /apply/status?applicationNo=...&email=... で自動検索→申請データ表示
+ *  - トップページに状況確認導線がある
  */
 import { test, expect } from "@playwright/test";
 
-test.describe.skip("学生出願フロー (TODO: data-testid 整備後に有効化)", () => {
-  test("Step 1 未入力時は「次へ進む」ボタンが無効", async ({ page }) => {
+test.describe("学生出願フロー Step 1", () => {
+  test("未入力時は『次へ進む』ボタンが disabled", async ({ page }) => {
     await page.goto("/apply?school=chuo-seminar");
-    const nextBtn = page.getByRole("button", { name: /次へ進む/ });
+    const nextBtn = page.getByTestId("apply-next");
+    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
     await expect(nextBtn).toBeDisabled();
+    // 警告ヒント
+    await expect(page.getByText(/必須項目を入力してから進んでください/).first()).toBeVisible();
   });
 
-  test("Step 1 を埋めると次へ進むボタンが有効化される", async ({ page }) => {
+  test("必須項目を埋めると『次へ進む』が enable になる", async ({ page }) => {
     await page.goto("/apply?school=chuo-seminar");
-    // data-testid 待ち
+
+    // form-config の API が返るのを待つために少し待機
+    await expect(page.getByTestId("apply-lastName")).toBeVisible({ timeout: 10_000 });
+
     await page.getByTestId("apply-lastName").fill("山田");
     await page.getByTestId("apply-firstName").fill("太郎");
-    // ... (完全実装は後ほど)
-  });
+    await page.getByTestId("apply-lastNameKana").fill("ヤマダ");
+    await page.getByTestId("apply-firstNameKana").fill("タロウ");
+    // 生年月日（DateSelect = type=date input）
+    await page.getByTestId("apply-birthDate").fill("2002-04-01");
+    await page.getByTestId("apply-gender").selectOption("男性");
+    await page.getByTestId("apply-nationality").selectOption("中国");
+    await page.getByTestId("apply-phone").fill("09012345678");
+    await page.getByTestId("apply-email").fill(`e2e-${Date.now()}@example.com`);
+    await page.getByTestId("apply-postalCode").fill("1234567");
+    await page.getByTestId("apply-prefecture").selectOption("東京都");
+    await page.getByTestId("apply-city").fill("新宿区");
+    await page.getByTestId("apply-address").fill("1-2-3");
+    await page.getByTestId("apply-japaneseLevel").selectOption("N2");
 
-  test("Step 4 で振込証明書未アップロード時は確認へ進めない", async ({ page }) => {
-    await page.goto("/apply");
-    await expect(page.getByRole("heading", { name: "個人情報" })).toBeVisible();
+    const nextBtn = page.getByTestId("apply-next");
+    // 入力検証は state 更新後に判定されるので少し待つ
+    await expect(nextBtn).toBeEnabled({ timeout: 5_000 });
   });
 });
 
-test.describe("出願状況確認・再ログイン（軽量シナリオ）", () => {
-  test("トップページにヘッダ「出願の続き・状況確認」リンクがある", async ({ page }) => {
+test.describe("出願状況確認・再ログイン", () => {
+  test("トップページにヘッダ『出願の続き・状況確認』リンクがある", async ({ page }) => {
     await page.goto("/");
     const link = page.getByRole("link", { name: /出願の続き・状況確認|続き \/ 状況/ });
     await expect(link.first()).toBeVisible();
   });
 
-  test("/apply/status?applicationNo=...&email=... でアプリケーションが表示される", async ({ page }) => {
-    // URL パラメータ付きで開くと: 検索フォームに値が埋まる → 自動検索 → 結果表示
-    // という流れ。最終的には「DEMO-0001」がページのどこかに見えていれば成功。
+  test("/apply/status?applicationNo=...&email=... で申請データが表示される", async ({ page }) => {
+    // URL パラメータ付きでアクセス → 自動検索 → 結果表示
     await page.goto("/apply/status?applicationNo=DEMO-0001&email=demo-0001%40example.com");
-
-    // 自動検索完了を待つ（最大 10 秒）
+    // 最終結果に DEMO-0001 が見えていれば成功
     await expect(page.getByText("DEMO-0001").first()).toBeVisible({ timeout: 10_000 });
   });
 });

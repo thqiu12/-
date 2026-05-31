@@ -68,6 +68,7 @@ export default function AdminLoginPage() {
             <div>
               <label className="form-label">ユーザー名</label>
               <input
+                data-testid="admin-login-username"
                 type="text"
                 className={`form-input ${error ? "border-red-400" : ""}`}
                 placeholder="username"
@@ -80,6 +81,7 @@ export default function AdminLoginPage() {
             <div>
               <label className="form-label">パスワード</label>
               <input
+                data-testid="admin-login-password"
                 type="password"
                 className={`form-input ${error ? "border-red-400" : ""}`}
                 placeholder="••••••••"
@@ -99,6 +101,7 @@ export default function AdminLoginPage() {
             )}
 
             <button
+              data-testid="admin-login-submit"
               type="submit"
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center gap-2 py-3"

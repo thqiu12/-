@@ -726,6 +726,7 @@ export default function AdminDashboard() {
                       data?.applications.map((app) => (
                         <tr
                           key={app.id}
+                          data-testid={`app-row-${app.applicationNo}`}
                           className="hover:bg-gray-50 transition-colors cursor-pointer"
                           onClick={() => router.push(`/admin/applications/${app.id}`)}
                         >

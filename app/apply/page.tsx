@@ -241,8 +241,8 @@ function Divider() {
 }
 
 // ========== DateSelect ==========
-function DateSelect({ value, onChange, minYear, maxYear, hasError }: {
-  value: string; onChange: (val: string) => void; minYear?: number; maxYear?: number; hasError?: boolean;
+function DateSelect({ value, onChange, minYear, maxYear, hasError, testId }: {
+  value: string; onChange: (val: string) => void; minYear?: number; maxYear?: number; hasError?: boolean; testId?: string;
 }) {
   const currentYear = new Date().getFullYear();
   const min = `${minYear ?? currentYear - 73}-01-01`;
@@ -250,6 +250,7 @@ function DateSelect({ value, onChange, minYear, maxYear, hasError }: {
   return (
     <input
       type="date"
+      data-testid={testId}
       className={`w-full px-3 py-2.5 text-sm border rounded-lg bg-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
         ${hasError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-gray-300"}`}
       value={value}
@@ -322,22 +323,22 @@ function Step1({ form, onChange, errors, formConfig }: {
           <div className="grid grid-cols-2 gap-4">
             {isEnabled("lastName") && (
               <Field label="姓（漢字・ローマ字）" required={isRequired("lastName")} error={errors.lastName}>
-                <Input placeholder="山田" value={form.lastName} error={!!errors.lastName} onChange={e => onChange("lastName", e.target.value)} />
+                <Input data-testid="apply-lastName" placeholder="山田" value={form.lastName} error={!!errors.lastName} onChange={e => onChange("lastName", e.target.value)} />
               </Field>
             )}
             {isEnabled("firstName") && (
               <Field label="名（漢字・ローマ字）" required={isRequired("firstName")} error={errors.firstName}>
-                <Input placeholder="太郎" value={form.firstName} error={!!errors.firstName} onChange={e => onChange("firstName", e.target.value)} />
+                <Input data-testid="apply-firstName" placeholder="太郎" value={form.firstName} error={!!errors.firstName} onChange={e => onChange("firstName", e.target.value)} />
               </Field>
             )}
             {isEnabled("lastNameKana") && (
               <Field label="姓（カナ）" required={isRequired("lastNameKana")} error={errors.lastNameKana}>
-                <Input placeholder="ヤマダ" value={form.lastNameKana} error={!!errors.lastNameKana} onChange={e => onChange("lastNameKana", e.target.value)} />
+                <Input data-testid="apply-lastNameKana" placeholder="ヤマダ" value={form.lastNameKana} error={!!errors.lastNameKana} onChange={e => onChange("lastNameKana", e.target.value)} />
               </Field>
             )}
             {isEnabled("firstNameKana") && (
               <Field label="名（カナ）" required={isRequired("firstNameKana")} error={errors.firstNameKana}>
-                <Input placeholder="タロウ" value={form.firstNameKana} error={!!errors.firstNameKana} onChange={e => onChange("firstNameKana", e.target.value)} />
+                <Input data-testid="apply-firstNameKana" placeholder="タロウ" value={form.firstNameKana} error={!!errors.firstNameKana} onChange={e => onChange("firstNameKana", e.target.value)} />
               </Field>
             )}
           </div>
@@ -352,14 +353,14 @@ function Step1({ form, onChange, errors, formConfig }: {
             {isEnabled("birthDate") && (
               <div className="sm:col-span-2">
                 <Field label="生年月日" required={isRequired("birthDate")} error={errors.birthDate}>
-                  <DateSelect value={form.birthDate} onChange={v => onChange("birthDate", v)}
+                  <DateSelect testId="apply-birthDate" value={form.birthDate} onChange={v => onChange("birthDate", v)}
                     minYear={new Date().getFullYear() - 73} maxYear={new Date().getFullYear() - 14} hasError={!!errors.birthDate} />
                 </Field>
               </div>
             )}
             {isEnabled("gender") && (
               <Field label="性別" required={isRequired("gender")} error={errors.gender}>
-                <Select value={form.gender} error={!!errors.gender} onChange={e => onChange("gender", e.target.value)}>
+                <Select data-testid="apply-gender" value={form.gender} error={!!errors.gender} onChange={e => onChange("gender", e.target.value)}>
                   <option value="">選択</option>
                   <option value="男性">男性</option>
                   <option value="女性">女性</option>
@@ -368,7 +369,7 @@ function Step1({ form, onChange, errors, formConfig }: {
             )}
             {isEnabled("nationality") && (
               <Field label="国籍" required={isRequired("nationality")} error={errors.nationality}>
-                <Select value={form.nationality} error={!!errors.nationality} onChange={e => onChange("nationality", e.target.value)}>
+                <Select data-testid="apply-nationality" value={form.nationality} error={!!errors.nationality} onChange={e => onChange("nationality", e.target.value)}>
                   <option value="">選択</option>
                   {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
                 </Select>
@@ -385,12 +386,12 @@ function Step1({ form, onChange, errors, formConfig }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isEnabled("phone") && (
               <Field label="電話番号" required={isRequired("phone")} hint="ハイフンなし" error={errors.phone}>
-                <Input type="tel" placeholder="09012345678" value={form.phone} error={!!errors.phone} onChange={e => onChange("phone", e.target.value)} />
+                <Input data-testid="apply-phone" type="tel" placeholder="09012345678" value={form.phone} error={!!errors.phone} onChange={e => onChange("phone", e.target.value)} />
               </Field>
             )}
             {isEnabled("email") && (
               <Field label="メールアドレス" required={isRequired("email")} hint="審査結果の通知に使用" error={errors.email}>
-                <Input type="email" placeholder="example@email.com" value={form.email} error={!!errors.email} onChange={e => onChange("email", e.target.value)} />
+                <Input data-testid="apply-email" type="email" placeholder="example@email.com" value={form.email} error={!!errors.email} onChange={e => onChange("email", e.target.value)} />
               </Field>
             )}
           </div>
@@ -404,13 +405,13 @@ function Step1({ form, onChange, errors, formConfig }: {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {isEnabled("postalCode") && (
               <Field label="郵便番号" required={isRequired("postalCode")} hint="ハイフンなし7桁" error={errors.postalCode}>
-                <Input placeholder="1000001" maxLength={7} value={form.postalCode} error={!!errors.postalCode}
+                <Input data-testid="apply-postalCode" placeholder="1000001" maxLength={7} value={form.postalCode} error={!!errors.postalCode}
                   onChange={e => onChange("postalCode", e.target.value.replace(/\D/g, ""))} />
               </Field>
             )}
             {isEnabled("prefecture") && (
               <Field label="都道府県" required={isRequired("prefecture")} error={errors.prefecture}>
-                <Select value={form.prefecture} error={!!errors.prefecture} onChange={e => onChange("prefecture", e.target.value)}>
+                <Select data-testid="apply-prefecture" value={form.prefecture} error={!!errors.prefecture} onChange={e => onChange("prefecture", e.target.value)}>
                   <option value="">選択</option>
                   {PREFECTURES.map(p => <option key={p} value={p}>{p}</option>)}
                 </Select>
@@ -418,14 +419,14 @@ function Step1({ form, onChange, errors, formConfig }: {
             )}
             {isEnabled("city") && (
               <Field label="市区町村" required={isRequired("city")} error={errors.city}>
-                <Input placeholder="新宿区" value={form.city} error={!!errors.city} onChange={e => onChange("city", e.target.value)} />
+                <Input data-testid="apply-city" placeholder="新宿区" value={form.city} error={!!errors.city} onChange={e => onChange("city", e.target.value)} />
               </Field>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isEnabled("address") && (
               <Field label="番地" required={isRequired("address")} error={errors.address}>
-                <Input placeholder="西新宿1-1-1" value={form.address} error={!!errors.address} onChange={e => onChange("address", e.target.value)} />
+                <Input data-testid="apply-address" placeholder="西新宿1-1-1" value={form.address} error={!!errors.address} onChange={e => onChange("address", e.target.value)} />
               </Field>
             )}
             {isEnabled("addressDetail") && (
@@ -459,7 +460,7 @@ function Step1({ form, onChange, errors, formConfig }: {
             )}
             {isEnabled("japaneseLevel") && (
               <Field label="日本語レベル" required={isRequired("japaneseLevel")} error={errors.japaneseLevel}>
-                <Select value={form.japaneseLevel} error={!!errors.japaneseLevel} onChange={e => onChange("japaneseLevel", e.target.value)}>
+                <Select data-testid="apply-japaneseLevel" value={form.japaneseLevel} error={!!errors.japaneseLevel} onChange={e => onChange("japaneseLevel", e.target.value)}>
                   <option value="">選択してください</option>
                   <option value="N1">N1（最上級）</option>
                   <option value="N2">N2</option>
@@ -2036,6 +2037,7 @@ function ApplyPageInner() {
                 return (
                   <div className="flex flex-col items-end gap-1">
                     <button
+                      data-testid="apply-next"
                       onClick={handleNext}
                       disabled={submitting || !valid}
                       title={!valid ? "必須項目を入力してから進んでください" : ""}
