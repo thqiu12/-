@@ -32,17 +32,15 @@ jobs:
           cache: "npm"
       - run: npm ci --no-audit --no-fund
       - run: npx prisma generate
-      - run: npx prisma db push --skip-generate --accept-data-loss
-        env: { DATABASE_URL: "file:/tmp/senmon-vitest.db" }
       - run: npm run test:unit
+        # vitest.setup.ts が PID 付きパスで DB を作る。事前 db push は不要。
         env:
-          DATABASE_URL: "file:/tmp/senmon-vitest.db"
           SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
           CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
       # 型エラーは過去 2 回事故ったので本番ビルドも検証
       - run: NODE_OPTIONS="--max-old-space-size=2048" npm run build
         env:
-          DATABASE_URL: "file:/tmp/senmon-vitest.db"
+          DATABASE_URL: "file:/tmp/build.db"
           SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
           CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
 

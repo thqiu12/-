@@ -29,15 +29,11 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
-      - name: Prepare test DB
-        run: npx prisma db push --skip-generate --accept-data-loss
-        env:
-          DATABASE_URL: "file:/tmp/senmon-vitest.db"
-
       - name: Run Vitest
+        # vitest.setup.ts が PID 付きパスで DB を作成・破棄する。
+        # 事前 db push は冗長 → 衝突原因になるので削除。
         run: npm run test:unit
         env:
-          DATABASE_URL: "file:/tmp/senmon-vitest.db"
           SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
           CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
           NODE_ENV: "test"
