@@ -43,6 +43,15 @@ jobs:
           DATABASE_URL: "file:/tmp/build.db"
           SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
           CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
+      # CSS の生成を確認。崩れていれば deploy job 自体を走らせない。
+      - name: Verify CSS build output
+        run: |
+          CSS_COUNT=$(find .next/static/css -name "*.css" 2>/dev/null | wc -l)
+          if [ "$CSS_COUNT" -lt 1 ]; then
+            echo "::error::No CSS file in .next/static/css — abort deploy"
+            exit 1
+          fi
+          echo "✓ CSS verified ($CSS_COUNT file(s))"
 
   # ---------------- VPS へ SSH デプロイ ----------------
   deploy:

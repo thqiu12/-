@@ -91,14 +91,27 @@ if git diff --name-only "$LOCAL_SHA" "$REMOTE_SHA" | grep -qE "^(package(-lock)?
   fi
 fi
 
+# ロールバック用に直前のコミットを記録（CSS 失敗時に戻す）
+ROLLBACK_SHA="$LOCAL_SHA"
+
 # ----- クリーンビルド (.next のキャッシュ起因の CSS 崩壊を防止) -----
-log "古い .next を削除"
-rm -rf .next 2>>"$LOG"
+# 直前のビルド成果物を退避（ロールバック用）
+if [ -d .next ]; then
+  rm -rf .next.prev 2>>"$LOG" || true
+  mv .next .next.prev 2>>"$LOG" || true
+  log "前回ビルドを .next.prev に退避"
+fi
 
 # ----- ビルド -----
 log "Next.js ビルド中..."
 if ! NODE_OPTIONS="--max-old-space-size=1536" npm run build >> "$LOG" 2>&1; then
   log "ERROR: build failed, PM2 はリロードしません（前のビルドを継続使用）"
+  # ビルド失敗 → 退避した前回ビルドを戻す
+  if [ -d .next.prev ]; then
+    rm -rf .next 2>>"$LOG" || true
+    mv .next.prev .next 2>>"$LOG" || true
+    log "  → .next.prev から復元しました"
+  fi
   exit 1
 fi
 log "✓ ビルド成功"
@@ -139,9 +152,26 @@ fi
 
 if [ "$HEALTH_OK" = "1" ] && [ "$CSS_OK" = "1" ]; then
   log "✓ ヘルスチェック OK (API + CSS 両方到達)"
+  # 成功時は退避ファイルを削除
+  rm -rf .next.prev 2>>"$LOG" || true
 else
-  log "WARN: ヘルスチェック異常 — API=$HEALTH_OK CSS=$CSS_OK (パス: $CSS_PATH)"
-  log "      → ブラウザの hard reload (Cmd+Shift+R) を試すか、ログを確認してください"
+  log "ERROR: ヘルスチェック失敗 — API=$HEALTH_OK CSS=$CSS_OK (パス: $CSS_PATH)"
+  # ----- 自動ロールバック -----
+  if [ -d .next.prev ]; then
+    log "→ 自動ロールバック開始: 前のビルドに戻します"
+    git reset --hard "$ROLLBACK_SHA" --quiet 2>>"$LOG" || log "WARN: git reset 失敗"
+    rm -rf .next 2>>"$LOG" || true
+    mv .next.prev .next 2>>"$LOG" || true
+    pm2 reload "$APP_NAME" --update-env >> "$LOG" 2>&1
+    sleep 3
+    if curl -fsS http://127.0.0.1:3000/api/health 2>/dev/null | grep -q '"ok"'; then
+      log "✓ ロールバック完了 ($(git rev-parse --short HEAD))"
+    else
+      log "ERROR: ロールバック後もヘルスチェック失敗。手動対応が必要"
+    fi
+  else
+    log "WARN: .next.prev が無いためロールバック不可"
+  fi
 fi
 
 log "デプロイ完了 → $(git rev-parse --short HEAD)"

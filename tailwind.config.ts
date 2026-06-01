@@ -5,6 +5,13 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  // ステータス・状態バッジで動的に組み立てる色クラスを保護。
+  // ※ 通常は静的解析で十分。JIT が見落とすケースに備えた防波堤。
+  safelist: [
+    { pattern: /^(bg|text|border)-(red|green|blue|yellow|amber|indigo|purple|cyan|sky|teal|orange|gray)-(50|100|200|300|400|500|600|700|800|900)$/ },
+    { pattern: /^(bg|text|border)-navy-(50|100|200|300|400|500|600|700|800|900)$/ },
   ],
   theme: {
     extend: {

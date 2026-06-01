@@ -89,6 +89,24 @@ jobs:
           SESSION_SECRET: "test-session-secret-32chars-1234567890abcdef"
           CSRF_SECRET: "test-csrf-secret-32chars-1234567890abcdef"
 
+      - name: Verify CSS build output
+        # ビルド成果物に CSS が含まれているか確認。Tailwind 設定崩れの早期検知。
+        run: |
+          CSS_COUNT=$(find .next/static/css -name "*.css" 2>/dev/null | wc -l)
+          if [ "$CSS_COUNT" -lt 1 ]; then
+            echo "::error::No CSS file in .next/static/css — Tailwind build broke"
+            ls -la .next/static/ || true
+            exit 1
+          fi
+          # 主要なユーティリティクラスが含まれているか軽くチェック
+          CSS_FILE=$(find .next/static/css -name "*.css" | head -1)
+          for cls in "bg-navy-800" "rounded-lg" "text-white"; do
+            if ! grep -q "$cls" "$CSS_FILE" 2>/dev/null; then
+              echo "::warning::Class $cls not found in $CSS_FILE — possible purge over-aggressive"
+            fi
+          done
+          echo "✓ CSS verified: $CSS_FILE ($(wc -c < "$CSS_FILE") bytes)"
+
       - name: Run Playwright
         run: npm run test:e2e
         env:
