@@ -794,7 +794,7 @@ function Step3({ applicationId, uploadedDocs, onUpload, onDelete, formConfig }: 
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
-    try { const r = await fetch(`/api/upload?id=${id}`, { method: "DELETE" }); if (r.ok) onDelete(id); } catch { /* ignore */ }
+    try { const r = await fetch(`/api/upload?id=${id}&applicationId=${applicationId ?? ""}`, { method: "DELETE" }); if (r.ok) onDelete(id); } catch { /* ignore */ }
   };
 
   const formatSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)}KB` : `${(b / 1024 / 1024).toFixed(1)}MB`;
@@ -1003,7 +1003,7 @@ function Step4Payment({ applicationId, schoolCount, feeStatus, onFeeStatusChange
       setUploadedReceipt({ name: file.name });
       await fetch(`/api/applications/${applicationId}/fee`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ examFeeStatus: "確認中", examFeeAmount: fee, examFeeReceiptUrl: data.document?.fileUrl }),
+        body: JSON.stringify({ examFeeStatus: "確認中", examFeeAmount: fee, examFeeReceiptUrl: data.document?.filePath }),
       });
       onFeeStatusChange("確認中");
     } catch (err) { setUploadError(err instanceof Error ? err.message : "エラー"); }

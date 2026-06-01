@@ -64,17 +64,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "在籍情報が見つかりません" }, { status: 404 });
       }
       resolvedApplicationId = student.applicationId;
-    } else {
-      // 出願者：applicationNo + email で本人確認
-      if (!applicationNo || !email) {
-        return NextResponse.json({ error: "applicationNoとemailが必要です" }, { status: 400 });
-      }
+    } else if (applicationNo && email) {
+      // 出願者：applicationNo + email で本人確認（再開フロー）
       const app = await prisma.application.findFirst({
         where: { applicationNo, email: email },
         select: { id: true },
       });
       if (!app) return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
       resolvedApplicationId = app.id;
+    } else if (applicationId) {
+      // 出願ウィザード：推測不能な applicationId を保持する本人のみ（存在は下で検証）
+      resolvedApplicationId = applicationId;
+    } else {
+      return NextResponse.json({ error: "認証情報が必要です" }, { status: 400 });
     }
 
     const application = await prisma.application.findUnique({ where: { id: resolvedApplicationId } });
@@ -142,23 +144,27 @@ export async function DELETE(request: NextRequest) {
     const documentId = searchParams.get("id");
     const applicationNo = searchParams.get("applicationNo");
     const email = searchParams.get("email");
+    const applicationId = searchParams.get("applicationId");
 
     if (!documentId) return NextResponse.json({ error: "ドキュメントIDが必要です" }, { status: 400 });
 
     const document = await prisma.document.findUnique({ where: { id: documentId } });
     if (!document) return NextResponse.json({ error: "ドキュメントが見つかりません" }, { status: 404 });
 
-    // 認証：管理者 or 学生本人
+    // 認証：管理者 or 本人（applicationNo+email、または出願ウィザードの applicationId capability）
     const session = await getSession(request);
     if (!isAdmin(session)) {
-      if (!applicationNo || !email) {
-        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      let ownerId: string | null = null;
+      if (applicationNo && email) {
+        const app = await prisma.application.findFirst({
+          where: { applicationNo, email: email },
+          select: { id: true },
+        });
+        ownerId = app?.id ?? null;
+      } else if (applicationId) {
+        ownerId = applicationId;
       }
-      const app = await prisma.application.findFirst({
-        where: { applicationNo, email: email },
-        select: { id: true },
-      });
-      if (!app || app.id !== document.applicationId) {
+      if (!ownerId || ownerId !== document.applicationId) {
         return NextResponse.json({ error: "この書類を削除する権限がありません" }, { status: 403 });
       }
     }

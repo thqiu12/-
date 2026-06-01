@@ -46,13 +46,20 @@ export async function GET(
           { status: 403 }
         );
       }
-      // 管理者向け情報を除去
+      // 管理者向け・内部情報を除去（職員メモ・エージェント・面接メモ等は本人に返さない）
       const {
         adminMemo: _memo,
         interviewEmailSent: _ies,
         resultEmailSent: _res,
+        adminNotes: _notes,
+        agent: _agent,
+        agentId: _agentId,
+        interviewNotes: _inotes,
         ...publicData
-      } = application as typeof application & { adminMemo?: unknown; interviewEmailSent?: unknown; resultEmailSent?: unknown };
+      } = application as typeof application & {
+        adminMemo?: unknown; interviewEmailSent?: unknown; resultEmailSent?: unknown;
+        adminNotes?: unknown; agent?: unknown; agentId?: unknown; interviewNotes?: unknown;
+      };
       return NextResponse.json(publicData);
     }
 
