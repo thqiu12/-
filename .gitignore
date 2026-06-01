@@ -37,3 +37,8 @@ private/
 dev.db
 prisma/dev.db
 .dev.log
+
+# Test artifacts
+/playwright-report/
+/test-results/
+/.claude/

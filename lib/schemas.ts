@@ -146,6 +146,38 @@ export const ChangeRequestReviewSchema = z.object({
   reviewerNote: optStr(500),
 });
 
+/**
+ * 希望者リスト (Prospect): 渠道から学生情報を事前申告する CRM 用フォーム。
+ */
+export const ProspectCreateSchema = z.object({
+  // 必須
+  lastName: str(50),
+  firstName: str(50),
+  agentId: str(40),
+  // 任意 (マッチング精度向上 + 後の出願引き継ぎ用)
+  lastNameKana: optStr(50),
+  firstNameKana: optStr(50),
+  birthDate: optStr(20),
+  gender: optStr(20),
+  nationality: optStr(50),
+  email: optEmail.optional(),
+  phone: optStr(30),
+  intendedSchool: optStr(100),
+  intendedDepartment: optStr(100),
+  enrollmentYear: optStr(10),
+  enrollmentMonth: optStr(5),
+  expectedApplyDate: optStr(20),
+  agentNotes: optStr(1000),
+  // 渠道用シークレットトークン（任意。あれば agentId と整合チェック）
+  formToken: optStr(80),
+});
+
+export const ProspectAdminPatchSchema = z.object({
+  status: z.enum(["候補", "出願済", "辞退", "重複（他渠道優先）", "無効"]).optional(),
+  adminMemo: optStr(1000),
+  matchedApplicationId: optStr(40),
+});
+
 export const ChatPostSchema = z.object({
   applicationNo: optStr(50),
   studentNo: optStr(50),

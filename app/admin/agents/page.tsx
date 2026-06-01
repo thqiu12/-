@@ -14,6 +14,7 @@ interface Agent {
   contactName: string | null;
   contactEmail: string | null;
   notes: string | null;
+  formToken: string | null;
   isActive: boolean;
   createdAt: string;
   _count: { applications: number };
@@ -99,6 +100,43 @@ export default function AgentsPage() {
       body: JSON.stringify({ isActive: !agent.isActive }),
     });
     await fetchAgents();
+  };
+
+  const handleGenerateToken = async (agent: Agent) => {
+    if (agent.formToken) {
+      const ok = await confirm({
+        title: "新しい URL を発行しますか？",
+        message: `「${agent.name}」の現在のフォーム URL は無効になります。`,
+        danger: true,
+        okLabel: "発行する",
+      });
+      if (!ok) return;
+    }
+    const res = await fetch(`/api/agents/${agent.id}/form-token`, { method: "POST" });
+    if (res.ok) await fetchAgents();
+  };
+
+  const handleRevokeToken = async (agent: Agent) => {
+    const ok = await confirm({
+      title: "フォーム URL を無効化しますか？",
+      message: `「${agent.name}」専用フォーム URL を無効化します。再度発行すれば復旧できます。`,
+      danger: true,
+      okLabel: "無効化",
+    });
+    if (!ok) return;
+    await fetch(`/api/agents/${agent.id}/form-token`, { method: "DELETE" });
+    await fetchAgents();
+  };
+
+  const copyFormUrl = async (agent: Agent) => {
+    if (!agent.formToken) return;
+    const url = `${window.location.origin}/prospects/new?token=${agent.formToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert(`📋 コピーしました：\n${url}`);
+    } catch {
+      window.prompt("URL をコピーしてください", url);
+    }
   };
 
   const handleDelete = async (agent: Agent) => {
@@ -240,6 +278,34 @@ export default function AgentsPage() {
                         <span className="text-gray-400 truncate max-w-xs">📝 {agent.notes}</span>
                       )}
                     </div>
+                  </div>
+
+                  {/* フォーム URL */}
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    {agent.formToken ? (
+                      <>
+                        <button
+                          onClick={() => copyFormUrl(agent)}
+                          className="text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full hover:bg-green-100 transition-colors flex items-center gap-1"
+                          title="希望者リスト用 URL をコピー"
+                        >
+                          📋 URL コピー
+                        </button>
+                        <div className="flex gap-1 text-[10px]">
+                          <button onClick={() => handleGenerateToken(agent)} className="text-blue-600 hover:underline">再発行</button>
+                          <span className="text-gray-300">/</span>
+                          <button onClick={() => handleRevokeToken(agent)} className="text-red-500 hover:underline">無効化</button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleGenerateToken(agent)}
+                        className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        title="渠道専用フォーム URL を発行"
+                      >
+                        🔗 URL 発行
+                      </button>
+                    )}
                   </div>
 
                   {/* 申請数バッジ */}

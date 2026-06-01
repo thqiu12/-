@@ -403,6 +403,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // 希望者リスト（Prospect）との自動マッチング
+    // 渠道が事前に登録した希望者と email/氏名+誕生日で照合し、見つかれば
+    // matchedApplicationId と Application.agentId を双方向にセット。
+    // 失敗しても出願自体は成功させる（非クリティカル）。
+    try {
+      const { linkProspectToApplication } = await import("@/lib/match-prospect");
+      await linkProspectToApplication({
+        applicationId: application.id,
+        email: application.email,
+        lastName: application.lastName,
+        firstName: application.firstName,
+        birthDate: application.birthDate,
+      });
+    } catch (matchErr) {
+      console.error("Prospect 自動マッチ失敗 (出願自体は成功):", matchErr);
+    }
+
     // 管理者へメール通知（非同期・失敗しても無視）
     void sendAdminNotification(application).catch(() => {});
 

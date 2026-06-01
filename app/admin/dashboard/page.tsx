@@ -315,6 +315,7 @@ export default function AdminDashboard() {
               <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">📋 出願</span>
               <Link href="/admin/cohorts" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">選考管理</Link>
               <Link href="/admin/announcements" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">お知らせ</Link>
+              <Link href="/admin/prospects" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">希望者リスト</Link>
               <Link href="/admin/agents" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">エージェント</Link>
             </div>
             <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
