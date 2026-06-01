@@ -245,7 +245,18 @@ export default function AgentsPage() {
                   {/* メイン情報 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-navy-800">{agent.name}</span>
+                      <Link
+                        href={`/admin/agents/${agent.id}`}
+                        className="font-bold text-navy-800 hover:text-navy-600 hover:underline"
+                      >
+                        {agent.name}
+                      </Link>
+                      <Link
+                        href={`/admin/agents/${agent.id}`}
+                        className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100"
+                      >
+                        📋 希望者リスト →
+                      </Link>
                       {agent.country && (
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                           {agent.country}
