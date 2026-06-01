@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin, checkRateLimit } from "@/lib/auth";
+import { docPhysicalPath, docDownloadUrl, STORAGE_ROOT } from "@/lib/storage";
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || "10") * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -56,28 +58,30 @@ export async function POST(request: NextRequest) {
     const application = await prisma.application.findUnique({ where: { id: resolvedApplicationId } });
     if (!application) return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
 
-    // ファイル保存
-    const uploadDir = path.join(process.cwd(), "public", "uploads", resolvedApplicationId);
+    // ファイル保存（public/ の外。配信は /api/documents/[id]/file 経由でのみ）
+    const uploadDir = path.join(STORAGE_ROOT, resolvedApplicationId);
     await mkdir(uploadDir, { recursive: true });
 
-    const ext = path.extname(file.name);
     const safeName = file.name
       .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF._-]/g, "_")
       .substring(0, 100);
     const timestamp = Date.now();
     const fileName = `${timestamp}_${safeName}`;
-    const filePath = path.join(uploadDir, fileName);
+    const physicalPath = docPhysicalPath(resolvedApplicationId, fileName);
 
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    await writeFile(physicalPath, Buffer.from(bytes));
 
+    // filePath には公開静的パスではなく、認証付きダウンロードURLを保存する
+    const docId = crypto.randomUUID();
     const document = await prisma.document.create({
       data: {
+        id: docId,
         applicationId: resolvedApplicationId,
         docType,
         fileName,
         originalName: file.name,
-        filePath: `/uploads/${resolvedApplicationId}/${fileName}`,
+        filePath: docDownloadUrl(docId),
         fileSize: file.size,
         mimeType: file.type,
       },
@@ -128,7 +132,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { unlink } = await import("fs/promises");
-    const fullPath = path.join(process.cwd(), "public", document.filePath);
+    const fullPath = docPhysicalPath(document.applicationId, document.fileName);
     try { await unlink(fullPath); } catch { /* ファイルが存在しない場合は無視 */ }
 
     await prisma.document.delete({ where: { id: documentId } });

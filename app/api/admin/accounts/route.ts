@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isSuperAdmin } from "@/lib/auth";
+import { hashPassword } from "@/lib/password";
 import crypto from "crypto";
-
-function hashPassword(pwd: string): string {
-  return crypto.createHash("sha256").update(pwd + "senmon-salt-2024").digest("hex");
-}
 
 // GET: アカウント一覧
 export async function GET(request: NextRequest) {
@@ -48,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "このユーザー名は既に使用されています" }, { status: 409 });
     }
     const user = await prisma.adminUser.create({
-      data: { id: crypto.randomUUID(), username, passwordHash: hashPassword(password), displayName, role, isActive: true, updatedAt: new Date() },
+      data: { id: crypto.randomUUID(), username, passwordHash: await hashPassword(password), displayName, role, isActive: true, updatedAt: new Date() },
       select: { id: true, username: true, displayName: true, role: true, isActive: true, createdAt: true },
     });
     return NextResponse.json(user, { status: 201 });
@@ -73,7 +70,7 @@ export async function PATCH(request: NextRequest) {
     if (body.displayName !== undefined) data.displayName = body.displayName;
     if (body.role !== undefined) data.role = body.role;
     if (body.isActive !== undefined) data.isActive = body.isActive;
-    if (body.password) data.passwordHash = hashPassword(body.password);
+    if (body.password) data.passwordHash = await hashPassword(body.password);
     const user = await prisma.adminUser.update({
       where: { id },
       data,

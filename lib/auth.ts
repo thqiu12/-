@@ -10,18 +10,56 @@ export interface AdminSession {
   isValid: boolean;
 }
 
+// セッションの有効期間（発行時刻から）
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+/**
+ * 署名用シークレットを取得する。
+ * 未設定 or 短すぎる場合は例外を投げて「フェイルクローズ」する
+ * （ハードコードのフォールバックは絶対に使わない）。
+ */
+export function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 16) {
+    throw new Error(
+      "SESSION_SECRET が未設定、または短すぎます。16文字以上のランダムな値を環境変数に設定してください。"
+    );
+  }
+  return secret;
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+/** ログイン成功時に発行する署名付きトークンを生成する。 */
+export function createSessionToken(userId: string, role: string): string {
+  const secret = getSessionSecret();
+  const payload = `${userId}:${role}:${Date.now()}`;
+  const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  return Buffer.from(`${payload}:${sig}`).toString("base64");
+}
+
 // ---- トークン検証 ----
 function verifyToken(token: string): { userId: string; role: string } | null {
   try {
-    const secret = process.env.SESSION_SECRET || "senmon-secret-2024";
+    const secret = getSessionSecret();
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const parts = decoded.split(":");
     if (parts.length < 4) return null;
     const sig = parts[parts.length - 1];
     const payload = parts.slice(0, parts.length - 1).join(":");
     const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-    if (sig !== expected) return null;
-    const [userId, role] = parts;
+    if (!safeEqualHex(sig, expected)) return null;
+
+    const [userId, role, issuedAtStr] = parts;
+    // サーバ側で有効期限を検証（cookie の maxAge はクライアント改変可能なため信頼しない）
+    const issuedAt = Number(issuedAtStr);
+    if (!Number.isFinite(issuedAt) || Date.now() - issuedAt > SESSION_TTL_MS) return null;
+
     return { userId, role };
   } catch {
     return null;
@@ -32,12 +70,6 @@ function verifyToken(token: string): { userId: string; role: string } | null {
 export async function getSession(request: NextRequest): Promise<AdminSession | null> {
   const token = request.cookies.get("admin_token")?.value;
   if (!token) return null;
-
-  // 旧トークン形式（後方互換）
-  const sessionSecret = process.env.SESSION_SECRET || "senmon-secret-2024";
-  if (token === sessionSecret) {
-    return { userId: "legacy", role: "super_admin", isValid: true };
-  }
 
   const parsed = verifyToken(token);
   if (!parsed) return null;

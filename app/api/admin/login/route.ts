@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
-import { checkRateLimit } from "@/lib/auth";
+import { checkRateLimit, createSessionToken } from "@/lib/auth";
+import { verifyPassword, hashPassword } from "@/lib/password";
 
-function hashPassword(pwd: string): string {
-  return crypto.createHash("sha256").update(pwd + "senmon-salt-2024").digest("hex");
-}
-
-function makeSessionToken(userId: string, role: string): string {
-  const secret = process.env.SESSION_SECRET || "senmon-secret-2024";
-  const payload = `${userId}:${role}:${Date.now()}`;
-  const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  return Buffer.from(`${payload}:${sig}`).toString("base64");
-}
+const isProd = process.env.NODE_ENV === "production";
 
 export async function POST(request: NextRequest) {
   // ブルートフォース対策：IP単位で15分に10回まで
@@ -35,14 +26,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ユーザー名またはパスワードが正しくありません" }, { status: 401 });
     }
 
-    if (user.passwordHash !== hashPassword(password)) {
+    const { valid, needsRehash } = await verifyPassword(password, user.passwordHash);
+    if (!valid) {
       return NextResponse.json({ error: "ユーザー名またはパスワードが正しくありません" }, { status: 401 });
     }
 
-    // 最終ログイン日時を更新
-    await prisma.adminUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    // 最終ログイン日時を更新（旧SHA256ハッシュは scrypt へ自動移行）
+    await prisma.adminUser.update({
+      where: { id: user.id },
+      data: {
+        lastLoginAt: new Date(),
+        ...(needsRehash ? { passwordHash: await hashPassword(password) } : {}),
+      },
+    });
 
-    const token = makeSessionToken(user.id, user.role);
+    const token = createSessionToken(user.id, user.role);
     const response = NextResponse.json({
       success: true,
       user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role },
@@ -52,7 +50,7 @@ export async function POST(request: NextRequest) {
       name: "admin_token",
       value: token,
       httpOnly: true,
-      secure: false,
+      secure: isProd,
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
       path: "/",
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
       name: "admin_role",
       value: user.role,
       httpOnly: false,
-      secure: false,
+      secure: isProd,
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
       path: "/",
@@ -73,7 +71,7 @@ export async function POST(request: NextRequest) {
       name: "admin_display_name",
       value: Buffer.from(user.displayName).toString("base64"),
       httpOnly: false,
-      secure: false,
+      secure: isProd,
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
       path: "/",

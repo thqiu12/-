@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession, isAdmin } from "@/lib/auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 選考料の支払いステータスは管理者のみ変更可能
+    const session = await getSession(request);
+    if (!isAdmin(session)) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { examFeeStatus, examFeeAmount, examFeeReceiptUrl, examFeeNote } = body;
 
