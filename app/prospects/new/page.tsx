@@ -16,11 +16,36 @@ interface AgentInfo {
   name: string;
 }
 
+interface MyProspect {
+  id: string;
+  lastName: string;
+  firstName: string;
+  lastNameKana: string | null;
+  firstNameKana: string | null;
+  email: string | null;
+  intendedSchool: string | null;
+  intendedDepartment: string | null;
+  enrollmentYear: string | null;
+  status: string;
+  matchedApplicationId: string | null;
+  referredAt: string;
+}
+
+const STATUS_BADGE: Record<string, string> = {
+  "候補": "bg-blue-100 text-blue-700",
+  "出願済": "bg-green-100 text-green-700",
+  "辞退": "bg-gray-100 text-gray-600",
+  "重複（他渠道優先）": "bg-amber-100 text-amber-700",
+  "無効": "bg-red-100 text-red-700",
+};
+
 function ProspectNewInner() {
   const [token, setToken] = useState<string>("");
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [myProspects, setMyProspects] = useState<MyProspect[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // フォーム状態
   const [lastName, setLastName] = useState("");
@@ -64,6 +89,23 @@ function ProspectNewInner() {
       .catch(() => setAuthError("ネットワークエラー"))
       .finally(() => setAuthLoading(false));
   }, []);
+
+  const fetchHistory = async (t: string) => {
+    if (!t) return;
+    try {
+      const res = await fetch(`/api/prospects/by-token?token=${encodeURIComponent(t)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMyProspects(data.prospects || []);
+      }
+    } catch {
+      // 履歴取得失敗は致命的でない
+    }
+  };
+
+  useEffect(() => {
+    if (agent && token) fetchHistory(token);
+  }, [agent, token]);
 
   const reset = () => {
     setLastName(""); setFirstName(""); setLastNameKana(""); setFirstNameKana("");
@@ -111,6 +153,7 @@ function ProspectNewInner() {
       } else {
         setSuccess(true);
         reset();
+        fetchHistory(token);
         setTimeout(() => setSuccess(false), 4000);
       }
     } catch {
@@ -142,13 +185,76 @@ function ProspectNewInner() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <h1 className="font-bold text-lg">📝 希望者リスト 登録</h1>
-          <p className="text-sm text-navy-200">渠道: <strong>{agent?.name}</strong></p>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-bold text-lg">📝 希望者リスト 登録</h1>
+            <p className="text-sm text-navy-200">渠道: <strong>{agent?.name}</strong></p>
+          </div>
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="text-sm bg-navy-700 hover:bg-navy-600 px-3 py-2 rounded-lg whitespace-nowrap"
+          >
+            {showHistory ? "✏️ 登録フォームへ" : `📋 登録履歴 (${myProspects.length})`}
+          </button>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
+        {showHistory ? (
+          <div className="bg-white rounded-2xl shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-bold text-gray-800">これまでに登録した希望者</h2>
+              <span className="text-xs text-gray-500">{myProspects.length} 件</span>
+            </div>
+            {myProspects.length === 0 ? (
+              <p className="text-center text-gray-400 py-10 text-sm">まだ登録された希望者はいません</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="text-left px-4 py-2">氏名</th>
+                      <th className="text-left px-4 py-2">メール</th>
+                      <th className="text-left px-4 py-2">志望校 / 入学年</th>
+                      <th className="text-left px-4 py-2">状態</th>
+                      <th className="text-left px-4 py-2">登録日</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myProspects.map((p) => (
+                      <tr key={p.id} className="border-t border-gray-100">
+                        <td className="px-4 py-2">
+                          <p className="font-semibold">{p.lastName} {p.firstName}</p>
+                          {p.lastNameKana && <p className="text-xs text-gray-400">{p.lastNameKana} {p.firstNameKana}</p>}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-600 break-all">{p.email || "—"}</td>
+                        <td className="px-4 py-2 text-xs text-gray-600">
+                          {p.intendedSchool || "—"}
+                          {p.intendedDepartment && <p className="text-gray-400">{p.intendedDepartment}</p>}
+                          {p.enrollmentYear && <p className="text-gray-400">{p.enrollmentYear}年4月</p>}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${STATUS_BADGE[p.status] || "bg-gray-100"}`}>
+                            {p.status}
+                          </span>
+                          {p.matchedApplicationId && (
+                            <p className="text-[10px] text-green-600 mt-0.5">✓ 出願完了</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">
+                          {new Date(p.referredAt).toLocaleDateString("ja-JP")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="px-6 py-3 bg-gray-50 text-xs text-gray-500 border-t border-gray-100">
+              💡「出願完了」は学生が実際に出願し、自動マッチングされたことを示します。
+            </div>
+          </div>
+        ) : (
         <div className="bg-white rounded-2xl shadow border border-gray-200 p-6">
           <p className="text-sm text-gray-600 mb-5">
             出願前の学生情報を事前申告します。後から学生が出願したときに、メールアドレス or 氏名+生年月日で
@@ -234,6 +340,7 @@ function ProspectNewInner() {
             </div>
           </form>
         </div>
+        )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
           このフォームは渠道専用です。複数学生を連続で登録できます。<br />
