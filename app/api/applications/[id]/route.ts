@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin as checkAdmin } from "@/lib/auth";
 
@@ -45,13 +46,20 @@ export async function GET(
           { status: 403 }
         );
       }
-      // 管理者向け情報を除去
+      // 管理者向け・内部情報を除去（職員メモ・エージェント・面接メモ等は本人に返さない）
       const {
         adminMemo: _memo,
         interviewEmailSent: _ies,
         resultEmailSent: _res,
+        adminNotes: _notes,
+        agent: _agent,
+        agentId: _agentId,
+        interviewNotes: _inotes,
         ...publicData
-      } = application as typeof application & { adminMemo?: unknown; interviewEmailSent?: unknown; resultEmailSent?: unknown };
+      } = application as typeof application & {
+        adminMemo?: unknown; interviewEmailSent?: unknown; resultEmailSent?: unknown;
+        adminNotes?: unknown; agent?: unknown; agentId?: unknown; interviewNotes?: unknown;
+      };
       return NextResponse.json(publicData);
     }
 
@@ -147,7 +155,7 @@ export async function PATCH(
         ]);
         await prisma.enrollmentProcedure.create({
           data: {
-            id: require("crypto").randomUUID(),
+            id: crypto.randomUUID(),
             applicationId: params.id,
             instructions: "おめでとうございます！入学手続きを以下の手順で完了してください。\n\n① 学費をお振込みください\n② 必要書類をアップロードしてください\n③ 入学誓約書に電子署名してください\n④ すべて完了したら「手続き完了を報告する」ボタンを押してください\n\nご不明な点は入学相談室（平日9:00〜17:00）までお問い合わせください。",
             status: "案内済み",
@@ -177,7 +185,7 @@ export async function PATCH(
     if (addNote) {
       await prisma.adminNote.create({
         data: {
-          id: require("crypto").randomUUID(),
+          id: crypto.randomUUID(),
           applicationId: params.id,
           content: addNote,
           author: "管理者",

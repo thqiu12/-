@@ -32,6 +32,7 @@ yarn-error.log*
 .vercel
 tsconfig.tsbuildinfo
 public/uploads/
+storage/
 *.bak
 dev.db
 prisma/dev.db
