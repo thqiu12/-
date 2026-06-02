@@ -1079,7 +1079,10 @@ function Step4Payment({ applicationId, schoolCount, feeStatus, onFeeStatusChange
 }
 
 // ========== Step 5 確認 ==========
-function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedDoc[] }) {
+function Step5({ form, uploadedDocs, consent, onConsentChange }: {
+  form: FormData; uploadedDocs: UploadedDoc[];
+  consent: boolean; onConsentChange: (v: boolean) => void;
+}) {
   const Row = ({ label, value }: { label: string; value: string | boolean | undefined | null }) => (
     <div className="flex gap-3 py-2.5 border-b border-gray-50 last:border-0">
       <span className="text-xs text-gray-400 w-28 shrink-0 pt-0.5">{label}</span>
@@ -1150,6 +1153,24 @@ function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedD
           </div>
         )}
       </Section>
+
+      {/* 個人情報の取扱いへの同意 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={e => onConsentChange(e.target.checked)}
+            className="mt-1 h-4 w-4 shrink-0 accent-green-600"
+          />
+          <span className="text-sm text-gray-700 leading-relaxed">
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">個人情報の取扱いについて</a>
+            を確認し、本出願にあたり入力した個人情報（氏名・連絡先・在留情報・学歴・提出書類等）を
+            出願審査および入学手続きの目的で利用することに同意します。
+            <span className="text-red-500 ml-1">※必須</span>
+          </span>
+        </label>
+      </div>
     </div>
   );
 }
@@ -1278,6 +1299,7 @@ const DRAFT_KEY = "application_draft";
 // ========== Main ==========
 function ApplyPageInner() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [consent, setConsent] = useState(false);
   const [form, setForm] = useState<FormData>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [applicationId, setApplicationId] = useState<string | null>(null);
@@ -1665,6 +1687,7 @@ function ApplyPageInner() {
 
   const handleSubmit = async () => {
     if (!applicationId) { setSubmitError("出願IDが見つかりません"); return; }
+    if (!consent) { setSubmitError("個人情報の取扱いへの同意が必要です"); return; }
     setSubmitting(true); setSubmitError(null);
     try {
       const res = await fetch(`/api/applications/${applicationId}/submit`, {
@@ -1859,7 +1882,7 @@ function ApplyPageInner() {
               </>}
               {currentStep === 4 && <Step4Payment applicationId={applicationId} schoolCount={schoolCount}
                 feeStatus={examFeeStatus} onFeeStatusChange={setExamFeeStatus} />}
-              {currentStep === 5 && <Step5 form={form} uploadedDocs={uploadedDocs} />}
+              {currentStep === 5 && <Step5 form={form} uploadedDocs={uploadedDocs} consent={consent} onConsentChange={setConsent} />}
             </>
           )}
         </div>
@@ -1892,8 +1915,9 @@ function ApplyPageInner() {
                   ) : currentStep === 4 ? "確認へ進む →" : "次へ進む →"}
                 </button>
               ) : (
-                <button onClick={handleSubmit} disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition shadow-sm shadow-green-200">
+                <button onClick={handleSubmit} disabled={submitting || !consent}
+                  title={!consent ? "個人情報の取扱いへの同意が必要です" : undefined}
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition shadow-sm shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
                   {submitting ? <><span className="animate-spin">⏳</span> 提出中...</> : "✅ 提出する"}
                 </button>
               )}
