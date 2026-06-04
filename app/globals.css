@@ -96,7 +96,7 @@ body {
   }
 
   .wsdb-nav {
-    @apply grid gap-0.5 flex-1;
+    @apply flex flex-col gap-0.5;
   }
 
   .wsdb-nav-section {
