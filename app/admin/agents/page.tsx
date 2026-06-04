@@ -162,30 +162,21 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin/dashboard" className="text-navy-300 hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="font-bold text-lg">エージェント管理</h1>
-              <p className="text-navy-300 text-xs">紹介元・中介機関の管理</p>
-            </div>
-          </div>
-          <button onClick={openCreate} className="btn-primary text-sm flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新規追加
-          </button>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">🤝 エージェント管理</h1>
+          <p className="wsdb-topbar-meta">紹介元・中介機関の管理</p>
         </div>
-      </header>
+        <button onClick={openCreate} className="btn-primary text-sm flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          新規追加
+        </button>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <div>
         {/* 統計 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="card text-center">
@@ -368,7 +359,7 @@ export default function AgentsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* モーダル */}
       {showForm && (
@@ -449,6 +440,6 @@ export default function AgentsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -93,23 +93,15 @@ export default function QuotaPage() {
   const years = ["2026", "2027", "2028"];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-navy-800 font-bold text-sm">専</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-lg leading-tight">定員管理</h1>
-              <p className="text-navy-300 text-xs">学校×学科×入学年度 別 留学生定員</p>
-            </div>
-          </div>
-          <Link href="/admin/dashboard" className="text-navy-300 hover:text-white text-sm">← ダッシュボード</Link>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">📊 定員管理</h1>
+          <p className="wsdb-topbar-meta">学校×学科×入学年度 別 留学生定員</p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <div className="space-y-6">
 
         {/* サマリーカード */}
         {!loading && (
@@ -247,7 +239,7 @@ export default function QuotaPage() {
             );
           })
         )}
-      </main>
+      </div>
 
       {/* 定員設定モーダル */}
       {showModal && (
@@ -294,6 +286,6 @@ export default function QuotaPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

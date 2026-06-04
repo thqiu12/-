@@ -202,28 +202,15 @@ export default function AnnouncementsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-navy-800 font-bold">専</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-lg leading-tight">お知らせ・一括通知管理</h1>
-              <p className="text-navy-300 text-xs">専門学校 入学出願システム</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/dashboard" className="text-navy-300 hover:text-white text-sm transition-colors">
-              ← ダッシュボード
-            </Link>
-          </div>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">📢 お知らせ・一括通知</h1>
+          <p className="wsdb-topbar-meta">出願者・在校生への通知管理</p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <div>
         {/* Top action */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">お知らせ一覧</h2>
@@ -428,7 +415,7 @@ export default function AnnouncementsPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

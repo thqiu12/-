@@ -194,28 +194,15 @@ export default function EnrollmentManagementPage() {
   const isSuperAdmin = adminRole === "super_admin" || adminRole === "admin";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-navy-800 font-bold text-sm">専</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-sm leading-tight">入学手続き管理</h1>
-              <p className="text-navy-400 text-xs">合格者の手続き進捗一覧</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/dashboard" className="text-navy-300 hover:text-white text-xs px-3 py-1.5 rounded hover:bg-navy-700 transition">
-              ← ダッシュボード
-            </Link>
-          </div>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">🎓 入学手続き管理</h1>
+          <p className="wsdb-topbar-meta">合格者の手続き進捗一覧</p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-screen-2xl mx-auto px-4 py-6">
+      <div>
 
         {/* ===== ステップタブ ===== */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5 overflow-hidden">
@@ -498,7 +485,7 @@ export default function EnrollmentManagementPage() {
           </div>
           </>
         )}
-      </main>
+      </div>
 
       {/* ===== メモ編集モーダル ===== */}
       {noteModal && (
@@ -533,6 +520,6 @@ export default function EnrollmentManagementPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

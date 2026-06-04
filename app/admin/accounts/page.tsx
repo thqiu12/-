@@ -165,21 +165,16 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-navy-800 text-white py-4 px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin/dashboard" className="text-navy-300 hover:text-white text-sm">← ダッシュボード</Link>
-            <span className="text-navy-600">/</span>
-            <h1 className="font-bold">アカウント管理</h1>
-          </div>
-          <button onClick={openCreate} className="bg-white text-navy-800 text-sm font-bold px-4 py-2 rounded-lg hover:bg-navy-50 transition-colors">
-            ＋ 新規アカウント
-          </button>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">👥 アカウント管理</h1>
+          <p className="wsdb-topbar-meta">スタッフ・面接官のアカウントと権限</p>
         </div>
-      </header>
+        <button onClick={openCreate} className="btn-primary text-sm">＋ 新規アカウント</button>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <div>
         {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
 
         {/* 権限説明カード */}
@@ -258,7 +253,7 @@ export default function AccountsPage() {
             </tbody>
           </table>
         </div>
-      </main>
+      </div>
 
       {/* モーダル */}
       {showModal && (
@@ -355,6 +350,6 @@ export default function AccountsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

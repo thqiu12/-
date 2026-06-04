@@ -236,31 +236,15 @@ export default function FormConfigPage() {
   const customCount = configs.filter(c => c.isCustom).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-navy-800 font-bold text-sm">専</span>
-            </div>
-            <div className="hidden lg:block">
-              <h1 className="font-bold text-sm leading-tight">フォーム設定</h1>
-              <p className="text-navy-400 text-xs">入学出願システム</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/dashboard"
-              className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700"
-            >
-              ← ダッシュボードへ
-            </Link>
-          </div>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">🛠 フォーム管理</h1>
+          <p className="wsdb-topbar-meta">出願フォームの項目・全体設定</p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <div>
         {/* Page Title */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -549,7 +533,7 @@ export default function FormConfigPage() {
           </div>
         )}
         </>}
-      </main>
+      </div>
 
       {/* Add Field Modal */}
       {showAddModal && (
@@ -688,7 +672,7 @@ export default function FormConfigPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

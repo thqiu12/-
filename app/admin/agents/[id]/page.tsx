@@ -167,21 +167,19 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
   const countByStatus = (s: string) => prospects.filter((p) => p.status === s).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin/agents" className="text-navy-200 hover:text-white text-sm">← エージェント一覧</Link>
-            <h1 className="font-bold">🤝 {agent.name}</h1>
-            {!agent.isActive && (
-              <span className="text-xs bg-red-500 px-2 py-0.5 rounded-full">無効</span>
-            )}
+    <>
+      <div className="wsdb-topbar">
+        <div className="flex items-center gap-3">
+          <Link href="/admin/agents" className="text-muted hover:text-ink text-sm">← 一覧</Link>
+          <div>
+            <h1 className="wsdb-topbar-title">🤝 {agent.name}</h1>
+            <p className="wsdb-topbar-meta">渠道詳細・URL 発行・希望者一覧</p>
           </div>
-          <Link href="/admin/dashboard" className="text-navy-200 hover:text-white text-sm">ダッシュボードへ</Link>
+          {!agent.isActive && <span className="wsdb-badge wsdb-badge-danger">無効</span>}
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="space-y-5">
         {/* 渠道情報サマリー */}
         <div className="card grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -334,7 +332,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
             </table>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

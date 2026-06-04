@@ -130,22 +130,20 @@ export default function AdminProspectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin/dashboard" className="text-navy-200 hover:text-white text-sm">← ダッシュボード</Link>
-            <h1 className="font-bold">📝 希望者リスト</h1>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-navy-200">候補: {prospects.filter((p) => p.status === "候補").length}</span>
-            <span className="text-navy-200">出願済: {prospects.filter((p) => p.status === "出願済").length}</span>
-            <span className="text-amber-300">重複: {duplicates.length} 件</span>
-          </div>
+    <>
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">📝 希望者リスト</h1>
+          <p className="wsdb-topbar-meta">渠道経由の出願候補者管理 + 重複検出</p>
         </div>
-      </header>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="wsdb-badge wsdb-badge-info">候補 {prospects.filter((p) => p.status === "候補").length}</span>
+          <span className="wsdb-badge wsdb-badge-ok">出願済 {prospects.filter((p) => p.status === "出願済").length}</span>
+          {duplicates.length > 0 && <span className="wsdb-badge wsdb-badge-warn">重複 {duplicates.length}</span>}
+        </div>
+      </div>
 
-      <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-5">
+      <div className="space-y-5">
         {/* タブ */}
         <div className="flex border-b border-gray-200 gap-1">
           <button
@@ -340,7 +338,7 @@ export default function AdminProspectsPage() {
             )}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
