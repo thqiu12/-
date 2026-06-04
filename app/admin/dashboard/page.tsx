@@ -297,53 +297,16 @@ export default function AdminDashboard() {
   const col = (key: string) => visibleCols[key] !== false;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-navy-800 text-white shadow-lg">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-navy-800 font-bold text-sm">専</span>
-            </div>
-            <div className="hidden lg:block">
-              <h1 className="font-bold text-sm leading-tight">管理ダッシュボード</h1>
-              <p className="text-navy-400 text-xs">入学出願システム</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
-              <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">📋 出願</span>
-              <Link href="/admin/cohorts" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">選考管理</Link>
-              <Link href="/admin/announcements" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">お知らせ</Link>
-              <Link href="/admin/prospects" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">希望者リスト</Link>
-              <Link href="/admin/agents" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">エージェント</Link>
-            </div>
-            <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
-              <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">🎓 在籍</span>
-              <Link href="/admin/enrollment" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">入学手続き</Link>
-              <Link href="/admin/students" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">在籍管理</Link>
-            </div>
-            <div className="flex items-center gap-0.5 border-r border-navy-600 pr-3 mr-1">
-              <span className="text-navy-500 text-xs font-bold mr-1 whitespace-nowrap">⚙️ 管理</span>
-              <Link href="/admin/quota" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">定員管理</Link>
-              <Link href="/admin/form-config" className="text-navy-300 hover:text-white text-xs transition-colors px-2 py-1.5 rounded hover:bg-navy-700 whitespace-nowrap">フォーム管理</Link>
-              <AccountManagementLink />
-            </div>
-            <UserBadge />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 bg-navy-700 hover:bg-navy-600 px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              ログアウト
-            </button>
-          </div>
+    <>
+      {/* wsdb 風タイトル＋メタ */}
+      <div className="wsdb-topbar">
+        <div>
+          <h1 className="wsdb-topbar-title">ダッシュボード</h1>
+          <p className="wsdb-topbar-meta">出願・選考・入学手続き 一覧</p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-screen-2xl mx-auto px-4 py-6">
+      <div className="max-w-screen-2xl">
 
         {/* ===== Stats カード（全量データ） ===== */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 mb-6">
@@ -894,7 +857,7 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

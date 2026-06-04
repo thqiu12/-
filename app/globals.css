@@ -69,6 +69,119 @@ body {
     @apply overflow-x-auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* ─── wsdb 風レイアウト ─────────────────────────────────── */
+  .wsdb-app {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(176, 205, 196, .26), transparent 24%),
+      radial-gradient(circle at top right, rgba(200, 214, 229, .28), transparent 24%),
+      linear-gradient(180deg, #eef3f1 0, #f5f7fa 260px, #f6f8fb 100%);
+  }
+
+  .wsdb-sidebar {
+    @apply min-h-screen flex flex-col gap-4 p-4 sticky top-0;
+    background: linear-gradient(180deg, rgba(20, 33, 44, .98), rgba(24, 48, 43, .97));
+    border-right: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  .wsdb-brand {
+    @apply flex items-center gap-3 mb-2 p-2.5 rounded-wsdb;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background: rgba(255, 255, 255, .04);
+  }
+
+  .wsdb-brand-mark {
+    @apply w-10 h-10 rounded-wsdb shrink-0 flex items-center justify-center font-extrabold text-lg;
+    background: linear-gradient(135deg, #c9eadf, #88c2b0);
+    color: #14212c;
+  }
+
+  .wsdb-nav {
+    @apply grid gap-1.5 flex-1 mt-1;
+  }
+
+  .wsdb-nav-section {
+    @apply mt-3 px-2.5 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wider;
+    color: rgba(255, 255, 255, .42);
+  }
+  .wsdb-nav-section:first-child { @apply mt-0; }
+
+  .wsdb-nav-item {
+    @apply rounded-wsdb px-3 py-2.5 text-left font-semibold text-sm cursor-pointer transition-all;
+    color: rgba(255, 255, 255, .82);
+    background: rgba(255, 255, 255, .015);
+    border: 0;
+  }
+  .wsdb-nav-item:hover,
+  .wsdb-nav-item.active {
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+    box-shadow: inset 3px 0 0 #c9eadf;
+  }
+
+  .wsdb-main {
+    @apply min-w-0 p-6 md:p-7;
+  }
+
+  .wsdb-topbar {
+    @apply flex items-start justify-between gap-4 mb-6;
+  }
+  .wsdb-topbar-title {
+    @apply text-xl font-extrabold text-ink leading-tight;
+  }
+  .wsdb-topbar-meta {
+    @apply text-xs text-muted mt-0.5;
+  }
+
+  /* ─── wsdb 風カード ─────────────────────────────────────── */
+  .wsdb-card {
+    @apply bg-white rounded-wsdb p-5;
+    border: 1px solid var(--tw-color-line, #dde6eb);
+    box-shadow: 0 1px 2px rgba(12, 22, 30, .04);
+  }
+  .wsdb-stat-card {
+    @apply wsdb-card flex items-center justify-between gap-3;
+  }
+  .wsdb-stat-label {
+    @apply text-xs text-muted font-semibold;
+  }
+  .wsdb-stat-value {
+    @apply text-3xl font-extrabold text-ink mt-1;
+  }
+  .wsdb-stat-icon {
+    @apply w-10 h-10 rounded-wsdb flex items-center justify-center text-base;
+    background: #eef4f7;
+    color: #2563eb;
+  }
+
+  /* ─── wsdb 風タブ（border-bottom） ───────────────────────── */
+  .wsdb-tabs {
+    @apply flex gap-1 border-b;
+    border-color: var(--tw-color-line, #dde6eb);
+  }
+  .wsdb-tab {
+    @apply px-4 py-2.5 text-sm font-semibold rounded-t-wsdb border-b-2 -mb-px transition;
+    border-color: transparent;
+    color: var(--tw-color-muted, #6b7785);
+  }
+  .wsdb-tab.active {
+    color: var(--tw-color-ink, #1a242d);
+    border-color: var(--tw-color-accent, #2563eb);
+    background: #fff;
+  }
+
+  /* ─── wsdb 風バッジ ─────────────────────────────────────── */
+  .wsdb-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold;
+  }
+  .wsdb-badge-ok    { background: #e6f4ec; color: #16493c; }
+  .wsdb-badge-warn  { background: #fef3c7; color: #b7791f; }
+  .wsdb-badge-danger{ background: #fee2e2; color: #b42318; }
+  .wsdb-badge-info  { background: #dbeafe; color: #2563eb; }
+  .wsdb-badge-muted { background: #f1f5f9; color: #6b7785; }
 }
 
 /* ─── Animations ─────────────────────────────────────────── */

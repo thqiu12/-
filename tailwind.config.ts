@@ -16,6 +16,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // wsdb 由来：管理画面のサイドバー暗色
+        sidebar: {
+          DEFAULT: "#14212c",
+          end: "#18302b",   // グラデ終点
+          hover: "rgba(255,255,255,.1)",
+        },
+        // 既存 navy（互換維持。新規UIは ink/muted/soft を優先）
         navy: {
           50: "#e8edf3",
           100: "#c5d1e0",
@@ -28,6 +35,22 @@ const config: Config = {
           800: "#1e3a5f",
           900: "#162c4a",
         },
+        // wsdb 風セマンティック
+        ink:    "#1a242d",  // 本文
+        muted:  "#6b7785",  // サブ文
+        line:   "#dde6eb",  // 罫線
+        soft:   "#f5f8fa",  // カード薄背景
+        ok:     "#16493c",  // 緑系（合格・在籍）
+        warn:   "#b7791f",  // 黄系（要確認）
+        danger: "#b42318",  // 赤系（退学・低出席）
+        accent: "#2563eb",  // 青系（CTA・リンク）
+      },
+      boxShadow: {
+        // wsdb 風カードシャドウ
+        soft: "0 18px 44px rgba(12, 22, 30, .08)",
+      },
+      borderRadius: {
+        wsdb: "8px",  // wsdb 既定 --radius
       },
       fontFamily: {
         sans: [
