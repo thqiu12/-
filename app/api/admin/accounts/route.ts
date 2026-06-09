@@ -96,6 +96,39 @@ export async function PATCH(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    // --- 自己ロックアウト / 最後の super_admin 喪失を防止 ---
+    // 対象が自分自身 or super_admin を降格/無効化するケースを検査。
+    const target = await prisma.adminUser.findUnique({
+      where: { id },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!target) {
+      return NextResponse.json({ error: "対象アカウントが見つかりません" }, { status: 404 });
+    }
+    const demotingFromSuper =
+      target.role === "super_admin" &&
+      parsed.data.role !== undefined &&
+      parsed.data.role !== "super_admin";
+    const deactivating =
+      target.role === "super_admin" && parsed.data.isActive === false;
+    if (demotingFromSuper || deactivating) {
+      // 他にアクティブな super_admin が残るか確認
+      const otherActiveSupers = await prisma.adminUser.count({
+        where: {
+          role: "super_admin",
+          isActive: true,
+          id: { not: id },
+        },
+      });
+      if (otherActiveSupers === 0) {
+        return NextResponse.json(
+          { error: "最後のスーパー管理者は降格・無効化できません。先に別のスーパー管理者を用意してください。" },
+          { status: 400 },
+        );
+      }
+    }
+
     const data: Record<string, unknown> = {};
     if (parsed.data.displayName !== undefined) data.displayName = parsed.data.displayName;
     if (parsed.data.role !== undefined) data.role = parsed.data.role;

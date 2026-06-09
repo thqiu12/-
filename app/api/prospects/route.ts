@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
         birthDate: rest.birthDate || null,
         gender: rest.gender || null,
         nationality: rest.nationality || null,
-        email: rest.email || null,
+        // email は小文字化して保存（出願メールとの照合を case-insensitive にするため）
+        email: rest.email ? rest.email.trim().toLowerCase() : null,
         phone: rest.phone || null,
         intendedSchool: rest.intendedSchool || null,
         intendedDepartment: rest.intendedDepartment || null,

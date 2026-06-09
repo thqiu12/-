@@ -11,6 +11,9 @@ export interface AdminSession {
   isValid: boolean;
 }
 
+// セッショントークンの有効期間（サーバー側で強制）。Cookie の maxAge と揃える。
+export const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000; // 8 時間
+
 export function makeSessionToken(userId: string, role: string, tokenVersion: number): string {
   const payload = `${userId}:${role}:${tokenVersion}:${Date.now()}`;
   const sig = crypto.createHmac("sha256", ENV.SESSION_SECRET).update(payload).digest("hex");
@@ -32,9 +35,15 @@ function verifyToken(
     const b = Buffer.from(expected);
     if (a.length !== b.length) return null;
     if (!crypto.timingSafeEqual(a, b)) return null;
-    const [userId, role, tv] = parts;
+    const [userId, role, tv, issuedAtRaw] = parts;
     const tokenVersion = Number(tv);
     if (!Number.isFinite(tokenVersion)) return null;
+    // サーバー側でトークンの発行時刻を検証し、期限切れを拒否する。
+    // （Cookie の maxAge はクライアント任せのため、流出トークンが無期限に使われるのを防ぐ）
+    const issuedAt = Number(issuedAtRaw);
+    if (!Number.isFinite(issuedAt) || Date.now() - issuedAt > SESSION_MAX_AGE_MS) {
+      return null;
+    }
     return { userId, role, tokenVersion };
   } catch {
     return null;

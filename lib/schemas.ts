@@ -219,7 +219,7 @@ export const ApplicationPatchSchema = z
   })
   .strict();
 
-export const FeeStatusEnum = z.enum(["未払い", "振込済み", "確認中", "確認済み"]);
+export const FeeStatusEnum = z.enum(["未払い", "振込済み", "確認中", "確認済み", "免除"]);
 export const FeePatchSchema = z
   .object({
     examFeeStatus: FeeStatusEnum.optional(),

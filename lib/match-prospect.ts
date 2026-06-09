@@ -26,16 +26,19 @@ export interface MatchResult {
 }
 
 export async function matchProspect(input: MatchInput): Promise<MatchResult> {
-  // Step 1: email 一致
-  if (input.email) {
-    const byEmail = await prisma.prospect.findFirst({
-      where: {
-        email: input.email,
-        matchedApplicationId: null,
-      },
+  // email は大文字小文字を無視して照合するため小文字化（SQLite は既定で case-sensitive）
+  const normEmail = input.email ? input.email.trim().toLowerCase() : "";
+
+  // Step 1: email 一致（保存側も normalize 済み前提。後方互換のため両方の可能性に備える）
+  if (normEmail) {
+    const emailMatches = await prisma.prospect.findMany({
+      where: { matchedApplicationId: null, NOT: { email: null } },
       orderBy: { referredAt: "asc" },
       include: { agent: { select: { name: true } } },
     });
+    const byEmail = emailMatches.find(
+      (p) => (p.email || "").trim().toLowerCase() === normEmail,
+    );
     if (byEmail) {
       return {
         prospect: { id: byEmail.id, agentId: byEmail.agentId, agentName: byEmail.agent.name },
@@ -45,7 +48,8 @@ export async function matchProspect(input: MatchInput): Promise<MatchResult> {
     }
   }
 
-  // Step 2: 氏名 + 生年月日
+  // Step 2: 氏名 + 生年月日。複数の渠道がヒットした場合は曖昧なので
+  // 自動採用せず admin の手動紐付けに委ねる（commission 誤付与防止）。
   if (input.birthDate) {
     const byNameBirth = await prisma.prospect.findMany({
       where: {
@@ -57,13 +61,17 @@ export async function matchProspect(input: MatchInput): Promise<MatchResult> {
       orderBy: { referredAt: "asc" },
       include: { agent: { select: { name: true } } },
     });
-    if (byNameBirth.length >= 1) {
+    if (byNameBirth.length === 1) {
       const first = byNameBirth[0];
       return {
         prospect: { id: first.id, agentId: first.agentId, agentName: first.agent.name },
         matchType: "name-birth",
-        candidates: byNameBirth.length,
+        candidates: 1,
       };
+    }
+    if (byNameBirth.length > 1) {
+      // 曖昧。マッチ無し扱い（admin が /admin/prospects で手動紐付け）。
+      return { prospect: null, matchType: "none", candidates: byNameBirth.length };
     }
   }
 
@@ -146,9 +154,11 @@ export async function findDuplicateProspects(): Promise<DuplicateGroup[]> {
 
   for (const p of all) {
     if (p.email) {
-      const list = byEmail.get(p.email) || [];
+      // email は小文字化キーでグループ化（casing 差を同一とみなす）
+      const ek = p.email.trim().toLowerCase();
+      const list = byEmail.get(ek) || [];
       list.push(p);
-      byEmail.set(p.email, list);
+      byEmail.set(ek, list);
     }
     if (p.birthDate) {
       const key = `${p.lastName}|${p.firstName}|${p.birthDate}`;
@@ -184,9 +194,10 @@ export async function findDuplicateProspects(): Promise<DuplicateGroup[]> {
     }
   });
 
-  // 氏名+誕生日 重複（既に email 重複で計上済みは除外）
+  // 氏名+誕生日 重複（既にいずれかのメンバーが email 重複で計上済みなら、
+  // 同じ顔ぶれの再掲を避けるためスキップ）
   Object.entries(Object.fromEntries(byNameBirth)).forEach(([key, list]) => {
-    if (list.length > 1 && !list.every((p: RowT) => seenIds.has(p.id))) {
+    if (list.length > 1 && !list.some((p: RowT) => seenIds.has(p.id))) {
       groups.push({
         key, reason: "name-birth",
         prospects: list.map(toSummary),
@@ -195,21 +206,26 @@ export async function findDuplicateProspects(): Promise<DuplicateGroup[]> {
     }
   });
 
-  // 氏名のみ重複 (要 admin 判断)
+  // 氏名のみ重複 (要 admin 判断。上位グループで計上済みは除外)
   Object.entries(Object.fromEntries(byName)).forEach(([key, list]) => {
-    if (list.length > 1 && !list.every((p: RowT) => seenIds.has(p.id))) {
+    if (list.length > 1 && !list.some((p: RowT) => seenIds.has(p.id))) {
       groups.push({
         key, reason: "name",
         prospects: list.map(toSummary),
       });
+      list.forEach((p: RowT) => seenIds.add(p.id));
     }
   });
 
-  // 名前アルファベット順
+  // 名前順（安全な文字列連結 + 同名は referredAt で安定ソート）
   groups.sort((a, b) => {
-    const aName = a.prospects[0]?.lastName + a.prospects[0]?.firstName;
-    const bName = b.prospects[0]?.lastName + b.prospects[0]?.firstName;
-    return aName.localeCompare(bName);
+    const ap = a.prospects[0];
+    const bp = b.prospects[0];
+    const aName = `${ap?.lastName ?? ""}${ap?.firstName ?? ""}`;
+    const bName = `${bp?.lastName ?? ""}${bp?.firstName ?? ""}`;
+    const cmp = aName.localeCompare(bName, "ja");
+    if (cmp !== 0) return cmp;
+    return String(ap?.referredAt ?? "").localeCompare(String(bp?.referredAt ?? ""));
   });
 
   return groups;

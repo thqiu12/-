@@ -155,27 +155,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // filePath は認証付きダウンロードルートを指す。
-    // UPLOAD_DIR が public/ の外にあっても到達可能。
-    // ※ doc.id を埋め込むため一度作って即 update する（2 ステップ）。
+    // filePath は認証付きダウンロードルートを指す（UPLOAD_DIR が public/ 外でも到達可能）。
+    // id を先に生成して 1 回の create で filePath を確定する
+    // （旧実装は create→update の 2 段で、update 失敗時に空 filePath の行が残るリスクがあった）。
+    const docId = crypto.randomUUID();
+    const downloadUrl = `/api/documents/${docId}/file`;
     const document = await prisma.document.create({
       data: {
+        id: docId,
         applicationId: resolvedApplicationId,
         docType,
         fileName,
         originalName: file.name.slice(0, 255),
-        filePath: "", // 直後に確定
+        filePath: downloadUrl,
         fileSize: file.size,
         mimeType: sniffed.mime,
         status: "提出済", // 再アップロード時は提出済に戻す（差し戻し解除）
       },
     });
-    const downloadUrl = `/api/documents/${document.id}/file`;
-    await prisma.document.update({
-      where: { id: document.id },
-      data: { filePath: downloadUrl },
-    });
-    document.filePath = downloadUrl;
 
     return NextResponse.json({
       success: true,

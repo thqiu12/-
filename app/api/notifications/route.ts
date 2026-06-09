@@ -300,19 +300,44 @@ export async function POST(request: NextRequest) {
     const smtpPass = process.env.SMTP_PASS;
     const smtpFrom = process.env.SMTP_FROM || smtpUser;
 
-    // 優先順位: SMTP 設定があれば SMTP、無ければ Resend にフォールバック。
-    if (smtpHost && smtpUser && smtpPass) {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: { user: smtpUser, pass: smtpPass },
-      });
-      await transporter.sendMail({ from: smtpFrom, to: body.to, subject, html });
-      return NextResponse.json({ success: true, emailSent: true, via: "smtp" });
+    const smtpComplete = !!(smtpHost && smtpUser && smtpPass);
+    const smtpPartial = !smtpComplete && !!(smtpHost || smtpUser || smtpPass);
+    if (smtpPartial) {
+      // 一部だけ設定されていると黙って送信スキップしてしまうため警告（Resend にフォールバック）。
+      console.warn(
+        "[notifications] SMTP が部分的にしか設定されていません（HOST/USER/PASS のいずれか欠落）。Resend にフォールバックします。",
+      );
     }
 
-    // SMTP 未設定 → Resend で送信（API キーが設定されていれば）
+    // 優先順位: SMTP が完全設定なら SMTP、それ以外は Resend。
+    if (smtpComplete) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+        await transporter.sendMail({ from: smtpFrom, to: body.to, subject, html });
+        return NextResponse.json({ success: true, emailSent: true, via: "smtp" });
+      } catch (smtpErr) {
+        // SMTP 送信失敗。Resend が使えるならフォールバック、無ければ構造化エラーで返す。
+        console.error("[notifications] SMTP 送信失敗:", smtpErr);
+        if (!ENV.RESEND_API_KEY) {
+          return NextResponse.json(
+            {
+              success: false,
+              emailSent: false,
+              error: smtpErr instanceof Error ? smtpErr.message : "SMTP 送信に失敗しました",
+            },
+            { status: 502 },
+          );
+        }
+        // RESEND_API_KEY あり → 下の Resend 送信に流す
+      }
+    }
+
+    // SMTP 未設定 or SMTP 失敗 → Resend で送信（API キーが設定されていれば）
     if (ENV.RESEND_API_KEY) {
       const r = await sendEmail({ to: body.to, subject, html });
       if (!r.ok) {
@@ -324,12 +349,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, emailSent: true, via: "resend", messageId: r.id });
     }
 
-    // どちらも未設定
-    return NextResponse.json({
-      success: true,
-      emailSent: false,
-      reason: "メール送信が未設定です（SMTP / RESEND_API_KEY のいずれも無し）",
-    });
+    // どちらも未設定 → 送信できないことを明示（success:false で UI に分かるように）
+    return NextResponse.json(
+      {
+        success: false,
+        emailSent: false,
+        error: "メール送信が未設定です（SMTP / RESEND_API_KEY のいずれも無し）",
+      },
+      { status: 502 },
+    );
   } catch (error) {
     console.error("POST /api/notifications error:", error);
     return NextResponse.json(

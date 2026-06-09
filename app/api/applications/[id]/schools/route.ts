@@ -18,11 +18,21 @@ export async function POST(
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
     }
 
+    // priority は 1〜3 の明示指定を必須にする。
+    // 以前は priority||1 で未指定時に第1志望を黙って上書きしていた（データ損失）。
+    const prio = Number(priority);
+    if (!Number.isInteger(prio) || prio < 1 || prio > 3) {
+      return NextResponse.json(
+        { error: "priority は 1〜3 で指定してください" },
+        { status: 400 },
+      );
+    }
+
     // 同じpriorityが存在する場合は上書き
     const school = await prisma.applicationSchool.upsert({
-      where: { applicationId_priority: { applicationId: params.id, priority: priority || 1 } },
+      where: { applicationId_priority: { applicationId: params.id, priority: prio } },
       update: { schoolName, department, course: course || null, enrollmentYear, enrollmentMonth, result: result || null, memo: memo || null },
-      create: { id: require("crypto").randomUUID(), applicationId: params.id, priority: priority || 1, schoolName, department, course: course || null, enrollmentYear, enrollmentMonth, result: result || null, memo: memo || null, updatedAt: new Date() },
+      create: { id: require("crypto").randomUUID(), applicationId: params.id, priority: prio, schoolName, department, course: course || null, enrollmentYear, enrollmentMonth, result: result || null, memo: memo || null, updatedAt: new Date() },
     });
 
     return NextResponse.json(school, { status: 201 });
@@ -171,6 +181,16 @@ export async function DELETE(
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId");
     if (!schoolId) return NextResponse.json({ error: "schoolIdが必要です" }, { status: 400 });
+
+    // 所有チェック: 該当 schoolId が本当に params.id の申請のものか確認
+    // （PATCH と同様。誤った schoolId で他申請の志望校を消さないため）
+    const existing = await prisma.applicationSchool.findUnique({
+      where: { id: schoolId },
+      select: { applicationId: true },
+    });
+    if (!existing || existing.applicationId !== params.id) {
+      return NextResponse.json({ error: "対象の志望校が見つかりません" }, { status: 404 });
+    }
 
     await prisma.applicationSchool.delete({ where: { id: schoolId } });
     return NextResponse.json({ success: true });
