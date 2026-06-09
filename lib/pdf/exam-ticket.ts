@@ -3,6 +3,13 @@ import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { escapeHtml } from "@/lib/security";
 import { ENV } from "@/lib/env";
+import { squareSeal } from "@/lib/pdf/seal";
+
+// 受験票内アイコン（ストロークSVG・絵文字の代替）。currentColor で見出し色を継承。
+const ICON_WRITTEN =
+  `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`;
+const ICON_INTERVIEW =
+  `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>`;
 
 export interface ExamTicketData {
   applicationNo: string;
@@ -63,6 +70,8 @@ function readPhotoAsDataUri(photoFilePath: string | null): string | null {
 function buildHTML(data: ExamTicketData): string {
   const e = escapeHtml;
   const photoUri = readPhotoAsDataUri(data.photoFilePath);
+  // 選考事務局の受付印（角印）
+  const recvSeal = squareSeal({ text: "選考事務局印", size: 58, rows: 3, rotate: -5, opacity: 0.9 });
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -80,6 +89,9 @@ function buildHTML(data: ExamTicketData): string {
   .header { border-bottom:3px solid #1e3a5f; padding-bottom:14px; margin-bottom:28px; display:flex; justify-content:space-between; align-items:flex-end; }
   .doc-title { font-size:32px; font-weight:700; color:#1e3a5f; letter-spacing:8px; }
   .org { font-size:11px; color:#666; text-align:right; line-height:1.6; }
+  /* ヘッダー右側：受付角印 ＋ 事務局名を横並び（重なり回避） */
+  .header-right { display:flex; align-items:center; gap:16px; }
+  .exam-card h2 svg { flex-shrink:0; }
   .grid { display:grid; grid-template-columns:200px 1fr; gap:24px; margin-bottom:32px; }
   .photo-box {
     width:200px; height:240px;
@@ -152,9 +164,12 @@ function buildHTML(data: ExamTicketData): string {
 <div class="page">
   <div class="header">
     <div class="doc-title">受　験　票</div>
-    <div class="org">
-      ${e(data.schoolName)}<br>
-      入学選考事務局
+    <div class="header-right">
+      ${recvSeal}
+      <div class="org">
+        ${e(data.schoolName)}<br>
+        入学選考事務局
+      </div>
     </div>
   </div>
 
@@ -191,7 +206,7 @@ function buildHTML(data: ExamTicketData): string {
   <div class="exam-stack">
     <!-- 筆記試験 -->
     <div class="exam-card written">
-      <h2>📝 筆記試験</h2>
+      <h2>${ICON_WRITTEN} 筆記試験</h2>
       ${data.writtenExamExempted
         ? `<div class="exam-exempt">免　除</div>`
         : (data.writtenExamDate || data.writtenExamTime || data.writtenExamPlace) ? `
@@ -206,7 +221,7 @@ function buildHTML(data: ExamTicketData): string {
 
     <!-- 面接試験 -->
     <div class="exam-card interview">
-      <h2>👤 面接試験</h2>
+      <h2>${ICON_INTERVIEW} 面接試験</h2>
       ${data.interviewDate || data.interviewTime || data.interviewPlace ? `
       <div class="exam-grid">
         <div class="k">日付</div><div class="v">${e(data.interviewDate) || "—"}</div>

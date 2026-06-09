@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer-core";
 import { existsSync } from "fs";
 import { escapeHtml } from "@/lib/security";
+import { squareSeal, institutionSealText } from "@/lib/pdf/seal";
 
 export interface AdmissionLetterData {
   type: "admission_notice" | "admission_permit";
@@ -61,6 +62,13 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
     ? `あなたは所定の入学手続きを完了されましたので、${enrollmentText}より${officialNameSafe} ${departmentSafe}${courseSafe ? ` ${courseSafe}` : ""}への入学を許可いたします。`
     : `あなたは選考の結果、${enrollmentText}入学生として合格と決定いたしましたので、ご通知申し上げます。`;
 
+  // 電子印：法人公印（角印）を校長名に重ねて捺印
+  const officialSealHtml = squareSeal({
+    text: institutionSealText(school.legalName),
+    size: 78,
+    rotate: -4,
+  });
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -81,52 +89,23 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
   .page {
     width: 794px;
     min-height: 1123px;
-    padding: 80px 90px 80px 90px;
+    padding: 76px 84px 80px 84px;
     position: relative;
     background: #fff;
   }
 
-  /* 上部中央の角印（小） */
-  .stamp-top {
+  /* 罫線の装飾枠（公文書らしさ） */
+  .doc-frame {
     position: absolute;
-    top: 68px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 52px;
-    height: 52px;
-    border: 2.5px solid #cc0000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    top: 40px; left: 44px; right: 44px; bottom: 44px;
+    border: 1.5px solid #1a2c45;
+    pointer-events: none;
   }
-  .stamp-top-inner {
-    font-size: 10px;
-    color: #cc0000;
-    text-align: center;
-    font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: 0.5px;
-  }
-
-  /* 右下の大きな角印 */
-  .stamp-bottom {
+  .doc-frame::after {
+    content: "";
     position: absolute;
-    bottom: 92px;
-    right: 90px;
-    width: 72px;
-    height: 72px;
-    border: 2.5px solid #cc0000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .stamp-bottom-inner {
-    font-size: 11px;
-    color: #cc0000;
-    text-align: center;
-    font-weight: 600;
-    line-height: 1.6;
-    letter-spacing: 0.5px;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border: 0.75px solid #1a2c45;
   }
 
   /* 発行番号 */
@@ -215,11 +194,12 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
     margin-right: 6px;
   }
 
-  /* 署名ブロック */
+  /* 署名ブロック（右寄せ・校長名に公印を重ねる） */
   .sign-block {
-    text-align: center;
-    margin-top: 20px;
-    padding-right: 80px;
+    position: relative;
+    text-align: right;
+    margin-top: 28px;
+    padding-right: 96px;
   }
 
   .sign-line {
@@ -229,10 +209,19 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
   }
 
   .sign-principal {
-    font-size: 15px;
+    position: relative;
+    display: inline-block;
+    font-size: 17px;
     font-weight: 600;
-    letter-spacing: 3px;
-    margin-top: 4px;
+    letter-spacing: 4px;
+    margin-top: 6px;
+  }
+  /* 校長名の右に重ねる公印（角印） */
+  .sign-principal .seal-official {
+    position: absolute;
+    right: -78px;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   /* 注意書き */
@@ -249,10 +238,8 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
 <body>
 <div class="page">
 
-  <!-- 上部角印 -->
-  <div class="stamp-top">
-    <div class="stamp-top-inner">学長<br>之印</div>
-  </div>
+  <!-- 装飾枠 -->
+  <div class="doc-frame"></div>
 
   <!-- 発行番号 -->
   <div class="doc-number">第&nbsp;&nbsp;${applicationNoSafe}&nbsp;&nbsp;号</div>
@@ -286,17 +273,12 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
   </div>
   `}
 
-  <!-- 署名 -->
+  <!-- 署名（校長名に公印を重ねて捺印） -->
   <div class="sign-block">
     <div class="sign-line">${legalNameSafe}</div>
     <div class="sign-line">${officialNameSafe}</div>
     <div class="sign-line">校　長</div>
-    <div class="sign-principal">${principalSafe}</div>
-  </div>
-
-  <!-- 右下の大きな角印 -->
-  <div class="stamp-bottom">
-    <div class="stamp-bottom-inner">校長<br>之印</div>
+    <div class="sign-principal">${principalSafe}<span class="seal-official">${officialSealHtml}</span></div>
   </div>
 
   <!-- 注意書き -->
