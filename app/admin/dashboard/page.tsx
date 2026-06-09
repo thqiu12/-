@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getStatusStyle, getJapaneseLevelStyle, formatDateTimeJP } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/Icon";
 
 const STATUSES = ["all", "受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留"];
 const JAPANESE_LEVELS = ["all", "N1", "N2", "N3", "N4", "N5", "なし"];
@@ -319,7 +320,7 @@ export default function AdminDashboard() {
               <div className="wsdb-stat-value">{globalStats?.total ?? "—"}</div>
               <div className="wsdb-stat-sub">累計</div>
             </div>
-            <div className="wsdb-stat-icon wsdb-stat-icon-blue">📋</div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-blue"><Icon name="clipboard" className="w-5 h-5" /></div>
           </div>
           <div
             className={`wsdb-stat ${todayOnly ? "active" : ""}`}
@@ -330,7 +331,7 @@ export default function AdminDashboard() {
               <div className="wsdb-stat-value">{globalStats?.todayCount ?? "—"}</div>
               <div className="wsdb-stat-sub">直近24時間</div>
             </div>
-            <div className="wsdb-stat-icon wsdb-stat-icon-amber">📅</div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-amber"><Icon name="calendar" className="w-5 h-5" /></div>
           </div>
           <div
             className={`wsdb-stat ${["受付中", "書類確認中", "面接待ち"].includes(statusFilter) ? "active" : ""}`}
@@ -345,7 +346,7 @@ export default function AdminDashboard() {
               </div>
               <div className="wsdb-stat-sub">受付 + 書類 + 面接</div>
             </div>
-            <div className="wsdb-stat-icon wsdb-stat-icon-purple">🗣</div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-purple"><Icon name="users" className="w-5 h-5" /></div>
           </div>
           <div
             className={`wsdb-stat ${statusFilter === "合格" ? "active" : ""}`}
@@ -356,7 +357,7 @@ export default function AdminDashboard() {
               <div className="wsdb-stat-value">{globalStats?.statusCounts["合格"] ?? 0}</div>
               <div className="wsdb-stat-sub">合格確定</div>
             </div>
-            <div className="wsdb-stat-icon wsdb-stat-icon-green">✓</div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-green"><Icon name="check" className="w-5 h-5" /></div>
           </div>
         </div>
 
@@ -531,9 +532,9 @@ export default function AdminDashboard() {
             {/* 今日のみ */}
             <button
               onClick={() => { setTodayOnly(v => !v); setPage(1); }}
-              className={`px-3 py-2 text-sm font-semibold rounded-lg border transition whitespace-nowrap ${todayOnly ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-300 hover:bg-orange-50"}`}
+              className={`px-3 py-2 text-sm font-semibold rounded-lg border transition whitespace-nowrap inline-flex items-center gap-1.5 ${todayOnly ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-300 hover:bg-orange-50"}`}
             >
-              📅 今日のみ
+              <Icon name="calendar" className="w-4 h-4" /> 今日のみ
             </button>
 
             {/* ステータス */}
