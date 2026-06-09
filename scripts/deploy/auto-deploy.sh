@@ -22,7 +22,9 @@ BRANCH="${AUTO_DEPLOY_BRANCH:-chore/security-hardening}"
 APP_DIR="${APP_DIR:-/srv/senmon/app}"
 LOG_DIR="${LOG_DIR:-/srv/senmon/backup}"
 LOG="$LOG_DIR/auto-deploy.log"
-LOCK="/tmp/senmon-auto-deploy.lock"
+# lock は LOG_DIR 配下（実行ユーザー所有）に置く。
+# /tmp だと過去に root が作った lock を別ユーザーが開けず "Permission denied" になった。
+LOCK="${LOG_DIR}/auto-deploy.lock"
 APP_NAME="senmon-nyuugaku"
 
 mkdir -p "$LOG_DIR"
@@ -59,16 +61,19 @@ log "================================================================="
 log "新しいコミットを検出: $LOCAL_SHA → $REMOTE_SHA"
 log "================================================================="
 
-# ----- pull -----
+# ----- 同期（reset --hard で確実に origin に合わせる） -----
+# ビルド時に Next.js が tsconfig.json / next-env.d.ts を自動書き換えするため、
+# pull --ff-only だと「ローカル変更で上書き不可」で失敗する。デプロイ専用機なので
+# 作業ツリーは常に origin と一致させる方針（fetch は上で実施済み）。
 if ! git checkout "$BRANCH" --quiet 2>>"$LOG"; then
-  log "ERROR: git checkout $BRANCH failed, abort"
+  # 既に detached 等でも reset で復帰できるよう checkout 失敗は致命にしない
+  log "WARN: git checkout $BRANCH 失敗（reset で続行）"
+fi
+if ! git reset --hard "origin/$BRANCH" --quiet 2>>"$LOG"; then
+  log "ERROR: git reset --hard origin/$BRANCH failed, abort"
   exit 1
 fi
-if ! git pull --ff-only --quiet 2>>"$LOG"; then
-  log "ERROR: git pull --ff-only failed, abort"
-  exit 1
-fi
-log "✓ git pull 完了 ($(git rev-parse --short HEAD))"
+log "✓ origin/$BRANCH に同期 ($(git rev-parse --short HEAD))"
 
 # 直前のコミットメッセージをログ
 git log -1 --pretty=format:"  msg: %s" >> "$LOG"
