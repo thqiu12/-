@@ -164,6 +164,7 @@ model Application {
   lastSchoolName         String
   lastSchoolCountry      String
   lastSchoolGraduate     String
+  lastSchoolGraduatedOn  String?  // 最終学歴の卒業（見込）年月（例: 2026-03）
   priorAttendanceRate    String?  // 出身校での出席率（例: 95%）
   workExperience         String?
 

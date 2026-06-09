@@ -369,6 +369,7 @@ export async function POST(request: NextRequest) {
         lastSchoolName: body.lastSchoolName,
         lastSchoolCountry: body.lastSchoolCountry,
         lastSchoolGraduate: body.lastSchoolGraduate,
+        lastSchoolGraduatedOn: body.lastSchoolGraduatedOn || null,
         priorAttendanceRate: body.priorAttendanceRate || null,
         workExperience: body.workExperience || null,
         examMode: body.examMode || "一般",

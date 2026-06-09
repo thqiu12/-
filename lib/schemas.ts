@@ -68,6 +68,7 @@ export const ApplicationCreateSchema = z.object({
   lastSchoolName: z.string().trim().max(100).default(""),
   lastSchoolCountry: z.string().trim().max(50).default(""),
   lastSchoolGraduate: z.string().trim().max(50).default(""),
+  lastSchoolGraduatedOn: optStr(20),
   priorAttendanceRate: optStr(20),
   workExperience: optStr(2000),
   examMode: ExamModeEnum.optional(),

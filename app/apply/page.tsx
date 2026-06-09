@@ -156,7 +156,7 @@ interface FormData {
   // 並願（追加志望校）
   additionalSchools: { schoolId: string; schoolName: string; department: string; course: string; }[];
   enrollmentYear: string; enrollmentMonth: string; applicationReason: string;
-  lastSchoolName: string; lastSchoolCountry: string; lastSchoolGraduate: string; priorAttendanceRate: string; workExperience: string;
+  lastSchoolName: string; lastSchoolCountry: string; lastSchoolGraduate: string; lastSchoolGraduatedOn: string; priorAttendanceRate: string; workExperience: string;
   examMode: string; referrerName: string; referrerType: string;
 }
 
@@ -172,7 +172,7 @@ const initialForm: FormData = {
   schoolId: "", schoolName: "", department: "", course: "",
   additionalSchools: [],
   enrollmentYear: "", enrollmentMonth: "4", applicationReason: "",
-  lastSchoolName: "", lastSchoolCountry: "", lastSchoolGraduate: "", priorAttendanceRate: "", workExperience: "",
+  lastSchoolName: "", lastSchoolCountry: "", lastSchoolGraduate: "", lastSchoolGraduatedOn: "", priorAttendanceRate: "", workExperience: "",
   examMode: "一般", referrerName: "", referrerType: "",
 };
 
@@ -723,6 +723,13 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
                 </Select>
               </Field>
             )}
+            {isEnabled("lastSchoolGraduate") && (
+              <Field label="卒業（見込）年月" hint="例：2026-03" error={errors.lastSchoolGraduatedOn}>
+                <input type="month" lang="ja"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300"
+                  value={form.lastSchoolGraduatedOn} onChange={e => onChange("lastSchoolGraduatedOn", e.target.value)} />
+              </Field>
+            )}
           </div>
 
           {isEnabled("priorAttendanceRate") && (
@@ -765,7 +772,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
           );
         })}
       </div>
-      {(form.examMode === "指定推薦" || form.examMode === "特待生") && (
+      {form.examMode === "指定推薦" && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="推薦機関・推薦者名">
             <Input placeholder="例：上海日本留学センター" value={form.referrerName} onChange={e => onChange("referrerName", e.target.value)} />
@@ -776,6 +783,23 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
               {["エージェント","学校","個人","その他"].map(v => <option key={v} value={v}>{v === "エージェント" ? "留学エージェント" : v === "学校" ? "学校・教育機関" : v === "個人" ? "個人（恩師・知人など）" : v}</option>)}
             </Select>
           </Field>
+        </div>
+      )}
+      {form.examMode === "特待生" && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl" aria-hidden="true">⭐</span>
+            <div>
+              <p className="font-bold text-yellow-800 text-sm mb-1">特待生選考の要件</p>
+              <p className="text-xs text-yellow-800 mb-2">
+                次のいずれかを満たす方が対象です。証明書類は次のステップでアップロードしてください（教務が内容を確認します）。
+              </p>
+              <ul className="text-xs text-yellow-800 list-disc list-inside space-y-0.5">
+                <li>日本語能力試験 <strong>N1</strong> 合格証明書</li>
+                <li>出身校での出席率 <strong>90%以上</strong>（95%以上を推奨）を証明する書類</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
       {form.examMode === "一般" && (
@@ -1168,8 +1192,9 @@ function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedD
         <Row label="学校名" value={form.lastSchoolName} />
         <Row label="国" value={form.lastSchoolCountry} />
         <Row label="卒業状況" value={form.lastSchoolGraduate} />
+        {form.lastSchoolGraduatedOn && <Row label="卒業（見込）年月" value={form.lastSchoolGraduatedOn} />}
         <Row label="選考区分" value={form.examMode} />
-        {form.referrerName && <Row label="推薦機関" value={form.referrerName} />}
+        {form.examMode === "指定推薦" && form.referrerName && <Row label="推薦機関" value={form.referrerName} />}
       </Section>
       <Section title={`提出書類（${uploadedDocs.length}件）`}>
         {uploadedDocs.length === 0 ? <p className="text-sm text-gray-400">書類なし</p> : (
@@ -1548,6 +1573,7 @@ function ApplyPageInner() {
           lastSchoolName: data.lastSchoolName || prev.lastSchoolName,
           lastSchoolCountry: data.lastSchoolCountry || prev.lastSchoolCountry,
           lastSchoolGraduate: data.lastSchoolGraduate || prev.lastSchoolGraduate,
+          lastSchoolGraduatedOn: data.lastSchoolGraduatedOn || prev.lastSchoolGraduatedOn,
           workExperience: data.workExperience || prev.workExperience,
           examMode: data.examMode || prev.examMode,
           referrerName: data.referrerName || prev.referrerName,
