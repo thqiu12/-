@@ -752,6 +752,7 @@ function StatusPageInner() {
       });
       if (res.ok) {
         setEnrollSubmitted(true);
+        toast("入学手続きの完了を報告しました", "success");
         setResult((prev) =>
           prev
             ? {
@@ -762,7 +763,12 @@ function StatusPageInner() {
               }
             : null
         );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err.error || "報告に失敗しました。もう一度お試しください。", "error");
       }
+    } catch {
+      toast("ネットワークエラーが発生しました", "error");
     } finally {
       setEnrollSubmitting(false);
     }
@@ -770,6 +776,20 @@ function StatusPageInner() {
 
   const handleFileUpload = async (docType: string, file: File) => {
     if (!result) return;
+
+    // クライアント側で先に検証（無駄なアップロードと長い待ち時間を防ぐ）
+    const MAX_MB = 10;
+    const ALLOWED_EXT = ["pdf", "jpg", "jpeg", "png", "webp"];
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    if (!ALLOWED_EXT.includes(ext)) {
+      toast("PDF / JPG / PNG / WebP 形式のファイルを選択してください", "error");
+      return;
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      toast(`ファイルサイズは ${MAX_MB}MB 以下にしてください（選択: ${(file.size / 1024 / 1024).toFixed(1)}MB）`, "error");
+      return;
+    }
+
     setUploadingDocType(docType);
     try {
       const formData = new FormData();
@@ -1433,14 +1453,14 @@ function StatusPageInner() {
                                 </svg>
                                 <span className="text-xs text-gray-700 flex-1 min-w-0">
                                   <span className="font-semibold text-red-700">修正版をアップロード</span>
-                                  <span className="text-gray-400 ml-1 hidden sm:inline">(PDF / JPG / PNG, 最大 10MB)</span>
+                                  <span className="text-gray-500 ml-1 block sm:inline">PDF / JPG / PNG・最大10MB</span>
                                 </span>
-                                <label className={`shrink-0 cursor-pointer text-xs px-3 py-1.5 rounded-lg border font-bold transition-colors ${
+                                <label className={`shrink-0 cursor-pointer text-xs px-3 min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-lg border font-bold transition-colors ${
                                   isReuploading
                                     ? "opacity-50 bg-gray-100 border-gray-200 text-gray-400 cursor-wait"
                                     : "bg-red-600 border-red-600 text-white hover:bg-red-700"
                                 }`}>
-                                  {isReuploading ? "送信中..." : "再アップロード"}
+                                  {isReuploading ? (<><svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>送信中...</>) : "再アップロード"}
                                   <input
                                     type="file"
                                     className="hidden"
@@ -1812,9 +1832,9 @@ function StatusPageInner() {
                                   <span className={`flex-1 text-sm ${isUploaded ? "text-green-700 font-medium" : "text-gray-700"}`}>
                                     振込証明書{isUploaded ? "（アップロード済み）" : ""}
                                   </span>
-                                  <label className={`shrink-0 cursor-pointer text-xs px-3 py-1.5 rounded-lg border transition-colors ${isUploading ? "opacity-50 bg-gray-100 border-gray-200 text-gray-400" : isUploaded ? "bg-white border-gray-300 text-gray-500" : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"}`}>
-                                    {isUploading ? "送信中..." : isUploaded ? "再アップロード" : "ファイルを選択"}
-                                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" disabled={isUploading}
+                                  <label className={`shrink-0 cursor-pointer text-xs px-3 min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-lg border transition-colors ${isUploading ? "opacity-50 bg-gray-100 border-gray-200 text-gray-400 cursor-wait" : isUploaded ? "bg-white border-gray-300 text-gray-600" : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"}`}>
+                                    {isUploading ? (<><svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>送信中...</>) : isUploaded ? "再アップロード" : "ファイルを選択"}
+                                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={isUploading}
                                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(docKey, f); e.target.value = ""; }} />
                                   </label>
                                 </div>
@@ -1856,11 +1876,11 @@ function StatusPageInner() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <span className={`text-sm ${isUploaded ? "text-green-700 font-medium" : "text-gray-700"}`}>{item.name}</span>
-                                      {item.required && !isUploaded && <span className="ml-1.5 text-xs text-red-400">必須</span>}
+                                      {item.required && !isUploaded && <span className="ml-1.5 text-xs text-red-600 font-semibold">必須</span>}
                                     </div>
-                                    <label className={`shrink-0 cursor-pointer text-xs px-2.5 py-1.5 rounded-lg border ${isUploading ? "opacity-50 bg-gray-100 border-gray-200 text-gray-400" : isUploaded ? "bg-white border-gray-300 text-gray-500" : "bg-purple-600 border-purple-600 text-white hover:bg-purple-700"}`}>
-                                      {isUploading ? "送信中..." : isUploaded ? "再UP" : "選択"}
-                                      <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" disabled={isUploading}
+                                    <label className={`shrink-0 cursor-pointer text-xs px-3 min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-lg border ${isUploading ? "opacity-50 bg-gray-100 border-gray-200 text-gray-400 cursor-wait" : isUploaded ? "bg-white border-gray-300 text-gray-600" : "bg-purple-600 border-purple-600 text-white hover:bg-purple-700"}`}>
+                                      {isUploading ? (<><svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>送信中...</>) : isUploaded ? "再UP" : "選択"}
+                                      <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={isUploading}
                                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(docKey, f); e.target.value = ""; }} />
                                     </label>
                                   </div>

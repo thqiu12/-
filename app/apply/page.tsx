@@ -180,16 +180,23 @@ const initialForm: FormData = {
 
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
       {children}
-      {required && <span className="text-red-500 ml-1">*</span>}
+      {required && <span className="text-red-600 ml-1">*</span>}
     </label>
   );
 }
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{msg}</p>;
+  return (
+    <p className="text-red-600 text-xs mt-1 flex items-center gap-1" role="alert">
+      <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      {msg}
+    </p>
+  );
 }
 
 function Field({ label, required, hint, error, children }: {
@@ -199,7 +206,7 @@ function Field({ label, required, hint, error, children }: {
     <div>
       <Label required={required}>{label}</Label>
       {children}
-      {hint && !error && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && !error && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
       <FieldError msg={error} />
     </div>
   );
@@ -230,7 +237,7 @@ function Select({ error, children, ...props }: React.SelectHTMLAttributes<HTMLSe
 function SectionTitle({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-5">
-      <span className="text-lg">{icon}</span>
+      <span className="text-lg" aria-hidden="true">{icon}</span>
       <h2 className="text-base font-bold text-gray-800">{children}</h2>
     </div>
   );
@@ -320,7 +327,7 @@ function Step1({ form, onChange, errors, formConfig }: {
       {hasNameFields && (
         <>
           <SectionTitle icon="👤">氏名</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isEnabled("lastName") && (
               <Field label="姓（漢字・ローマ字）" required={isRequired("lastName")} error={errors.lastName}>
                 <Input data-testid="apply-lastName" placeholder="山田" value={form.lastName} error={!!errors.lastName} onChange={e => onChange("lastName", e.target.value)} />
@@ -511,9 +518,9 @@ function SchoolDeptPicker({ school, department, course, onChange, errors, deptKe
         {school.departments.map(dept => {
           const sel = department === dept.name;
           return (
-            <label key={dept.name} className={`cursor-pointer rounded-xl border-2 p-4 flex items-start gap-3 transition-all
+            <label key={dept.name} className={`cursor-pointer rounded-xl border-2 p-4 flex items-start gap-3 transition-all focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-1
               ${sel ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/30"}`}>
-              <input type="radio" name={deptKey} value={dept.name} className="hidden"
+              <input type="radio" name={deptKey} value={dept.name} className="sr-only"
                 checked={sel} onChange={() => { onChange(deptKey, dept.name); onChange(courseKey, ""); }} />
               <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0
                 ${sel ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
@@ -660,7 +667,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
 
       <Divider />
       <SectionTitle icon="📅">入学希望時期</SectionTitle>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="入学希望年" required error={errors.enrollmentYear}>
           <Select value={form.enrollmentYear} error={!!errors.enrollmentYear} onChange={e => onChange("enrollmentYear", e.target.value)}>
             <option value="">選択してください</option>
@@ -744,13 +751,13 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
         ].map(mode => {
           const sel = form.examMode === mode.value;
           return (
-            <label key={mode.value} className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all
+            <label key={mode.value} className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-1
               ${sel ? "border-blue-500 bg-blue-50 shadow-md" : "border-gray-200 bg-white hover:border-blue-200"}`}>
-              <input type="radio" name="examMode" value={mode.value} className="hidden"
+              <input type="radio" name="examMode" value={mode.value} className="sr-only"
                 checked={sel} onChange={() => onChange("examMode", mode.value)} />
-              <div className="text-2xl mb-1">{mode.icon}</div>
+              <div className="text-2xl mb-1" aria-hidden="true">{mode.icon}</div>
               <p className={`font-bold text-sm mb-0.5 ${sel ? "text-blue-700" : "text-gray-700"}`}>{mode.label}</p>
-              <p className="text-xs text-gray-400">{mode.desc}</p>
+              <p className="text-xs text-gray-500">{mode.desc}</p>
               <span className={`inline-block mt-1.5 text-xs font-bold px-2 py-0.5 rounded-full ${mode.exam ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
                 {mode.exam ? "✏️ 筆記あり" : "🎫 筆記免除"}
               </span>
