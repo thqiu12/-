@@ -4,6 +4,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { NotificationSchema } from "@/lib/schemas";
 import { escapeHtml } from "@/lib/security";
 import { ENV } from "@/lib/env";
+import { sendEmail } from "@/lib/email";
 import { z } from "zod";
 
 type NotificationPayload = z.infer<typeof NotificationSchema>;
@@ -291,40 +292,44 @@ export async function POST(request: NextRequest) {
     }
     const body: NotificationPayload = parsed.data;
 
+    const { subject, html } = buildSubjectAndHtml(body);
+
     const smtpHost = process.env.SMTP_HOST;
     const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
     const smtpFrom = process.env.SMTP_FROM || smtpUser;
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      return NextResponse.json({
-        success: true,
-        emailSent: false,
-        reason: "SMTP未設定",
+    // 優先順位: SMTP 設定があれば SMTP、無ければ Resend にフォールバック。
+    if (smtpHost && smtpUser && smtpPass) {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
       });
+      await transporter.sendMail({ from: smtpFrom, to: body.to, subject, html });
+      return NextResponse.json({ success: true, emailSent: true, via: "smtp" });
     }
 
-    const { subject, html } = buildSubjectAndHtml(body);
+    // SMTP 未設定 → Resend で送信（API キーが設定されていれば）
+    if (ENV.RESEND_API_KEY) {
+      const r = await sendEmail({ to: body.to, subject, html });
+      if (!r.ok) {
+        return NextResponse.json(
+          { success: false, emailSent: false, error: r.error || "Resend 送信失敗" },
+          { status: 502 },
+        );
+      }
+      return NextResponse.json({ success: true, emailSent: true, via: "resend", messageId: r.id });
+    }
 
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
+    // どちらも未設定
+    return NextResponse.json({
+      success: true,
+      emailSent: false,
+      reason: "メール送信が未設定です（SMTP / RESEND_API_KEY のいずれも無し）",
     });
-
-    await transporter.sendMail({
-      from: smtpFrom,
-      to: body.to,
-      subject,
-      html,
-    });
-
-    return NextResponse.json({ success: true, emailSent: true });
   } catch (error) {
     console.error("POST /api/notifications error:", error);
     return NextResponse.json(
