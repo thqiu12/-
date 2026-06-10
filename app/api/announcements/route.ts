@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
-import pLimit from "p-limit";
 import { getSession, isAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { escapeHtml } from "@/lib/security";
 import { AnnouncementCreateSchema } from "@/lib/schemas";
 import { logError, logger } from "@/lib/logger";
+import { sendBatch } from "@/lib/email";
+import { ENV } from "@/lib/env";
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -79,7 +79,15 @@ export async function PATCH(request: NextRequest) {
 }
 
 async function handleSend(id: string) {
-  // 幂等：既送信なら拒否
+  // メール送信は Resend に統一。未設定なら送信済みフラグを立てずに 503 を返す（後で再送可能）。
+  if (!ENV.RESEND_API_KEY) {
+    return NextResponse.json(
+      { error: "メール送信が設定されていません（RESEND_API_KEY）" },
+      { status: 503 },
+    );
+  }
+
+  // 幂等：既送信なら拒否（sentAt を claim）
   const claim = await prisma.announcement.updateMany({
     where: { id, sentAt: null },
     data: { sentAt: new Date() },
@@ -107,23 +115,7 @@ async function handleSend(id: string) {
     select: { email: true },
     distinct: ["email"],
   });
-  const emails = recipients.map((r) => r.email);
-
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM || smtpUser;
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    await prisma.announcement.update({ where: { id }, data: { sentCount: 0 } });
-    return NextResponse.json({
-      success: true,
-      smtpEnabled: false,
-      targets: emails.length,
-      sentCount: 0,
-    });
-  }
+  const emails = recipients.map((r) => r.email).filter((e): e is string => !!e);
 
   const subject = `【お知らせ】${announcement.title}`;
   const titleSafe = escapeHtml(announcement.title);
@@ -141,42 +133,20 @@ async function handleSend(id: string) {
   </div>
 </body></html>`;
 
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: { user: smtpUser, pass: smtpPass },
-    pool: true,
-    maxConnections: 5,
-  });
-
-  const limit = pLimit(5);
-  let sentCount = 0;
-  let failCount = 0;
-  await Promise.all(
-    emails.map((email) =>
-      limit(async () => {
-        try {
-          await transporter.sendMail({ from: smtpFrom, to: email, subject, html });
-          sentCount++;
-        } catch (e) {
-          failCount++;
-          logError("announcement send failed", e, { email });
-        }
-      }),
-    ),
+  // Resend バッチ送信（宛先は1通ずつ個別送信＝アドレス非開示）
+  const { sent: sentCount, failed: failCount } = await sendBatch(
+    emails.map((to) => ({ to, subject, html })),
   );
-  transporter.close();
 
   await prisma.announcement.update({
     where: { id },
     data: { sentCount },
   });
 
-  logger.info({ id, targets: emails.length, sentCount, failCount }, "announcement sent");
+  logger.info({ id, targets: emails.length, sentCount, failCount }, "announcement sent (resend)");
   return NextResponse.json({
     success: true,
-    smtpEnabled: true,
+    provider: "resend",
     targets: emails.length,
     sentCount,
     failCount,

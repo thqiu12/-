@@ -187,10 +187,10 @@ export default function AnnouncementsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "送信に失敗しました");
-      if (!data.smtpEnabled) {
-        toast(`対象: ${data.targets ?? data.sentCount}件 / SMTP未設定のため実送信はスキップ`, "warn");
+      const fail = data.failCount ?? 0;
+      if ((data.targets ?? 0) === 0) {
+        toast("対象の受信者がいませんでした", "warn");
       } else {
-        const fail = data.failCount ?? 0;
         toast(`送信完了: ${data.sentCount}/${data.targets} 件${fail > 0 ? ` (失敗 ${fail})` : ""}`, fail > 0 ? "warn" : "success");
       }
       await fetchData();
