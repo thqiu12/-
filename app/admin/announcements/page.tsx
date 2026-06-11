@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTimeJP } from "@/lib/utils";
 import { useUI } from "@/components/ui/toast";
+import { useCapabilities } from "@/lib/useCapabilities";
 
 const STATUSES = ["受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留"];
 // ステータス絞り込みの選択肢（先頭2つは特別値）
@@ -47,6 +48,8 @@ function getTargetLabel(a: Announcement, cohorts: Cohort[]): string {
 export default function AnnouncementsPage() {
   const router = useRouter();
   const { toast, confirm } = useUI();
+  const { can } = useCapabilities();
+  const canSend = can("announcement.send");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
@@ -412,7 +415,8 @@ export default function AnnouncementsPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleSend(a)}
-                          disabled={sendingId === a.id || deletingId === a.id}
+                          disabled={sendingId === a.id || deletingId === a.id || !canSend}
+                          title={!canSend ? "お知らせ送信の権限がありません" : undefined}
                           className="btn-primary text-sm flex items-center gap-2"
                         >
                           {sendingId === a.id ? (

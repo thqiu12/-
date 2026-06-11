@@ -47,6 +47,14 @@ export default function PermissionsPage() {
     })();
   }, [router]);
 
+  // 未保存の変更があるままページを離れる/リロードする際に警告
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   const groups = useMemo(() => {
     const g: Record<string, CapabilityDef[]> = {};
     for (const c of caps) (g[c.group] ??= []).push(c);

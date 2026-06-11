@@ -10,6 +10,7 @@ import {
   formatFileSize,
 } from "@/lib/utils";
 import { useUI } from "@/components/ui/toast";
+import { useCapabilities } from "@/lib/useCapabilities";
 
 // ===== 面接フィードバックコンポーネント =====
 interface Interviewer { id: string; name: string; role: string | null; }
@@ -777,6 +778,10 @@ export default function ApplicationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast, confirm } = useUI();
+  const { can } = useCapabilities();
+  const canDecide = can("result.decide");
+  const canNotify = can("notification.send");
+  const DECISION_STATUSES = ["合格", "不合格", "補欠合格", "保留"];
   const id = params.id as string;
 
   const [application, setApplication] = useState<Application | null>(null);
@@ -2040,8 +2045,9 @@ export default function ApplicationDetailPage() {
                           <button
                             type="button"
                             onClick={() => handleSchoolInterviewMail(s)}
-                            disabled={schoolResultSaving === s.id}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-bold transition-colors"
+                            disabled={schoolResultSaving === s.id || !canNotify}
+                            title={!canNotify ? "メール送信の権限がありません" : undefined}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -2049,7 +2055,7 @@ export default function ApplicationDetailPage() {
                             この校の試験案内メールを送信
                           </button>
                           <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
-                            学生メールに「{priorityLabel}」明記の通知が送信されます（筆記＋面接両方含む）。
+                            {!canNotify ? "メール送信の権限がありません。" : ""}学生メールに「{priorityLabel}」明記の通知が送信されます（筆記＋面接両方含む）。
                           </p>
                         </div>
                       </div>
@@ -2367,13 +2373,19 @@ export default function ApplicationDetailPage() {
                 審査状態の変更
               </h3>
               <div className="space-y-2 mb-4">
-                {STATUSES.map((s) => (
+                {STATUSES.map((s) => {
+                  // 合否「決定」系は result.decide 権限が無いと選べない
+                  const locked = DECISION_STATUSES.includes(s) && !canDecide;
+                  return (
                   <label
                     key={s}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer border transition-all ${
-                      selectedStatus === s
-                        ? "border-navy-600 bg-navy-50"
-                        : "border-gray-200 hover:border-gray-300"
+                    title={locked ? "合否を決定する権限がありません" : undefined}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                      locked
+                        ? "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                        : selectedStatus === s
+                        ? "border-navy-600 bg-navy-50 cursor-pointer"
+                        : "border-gray-200 hover:border-gray-300 cursor-pointer"
                     }`}
                   >
                     <input
@@ -2382,16 +2394,22 @@ export default function ApplicationDetailPage() {
                       name="status"
                       value={s}
                       checked={selectedStatus === s}
+                      disabled={locked}
                       onChange={(e) => setSelectedStatus(e.target.value)}
                       className="text-navy-800"
                     />
                     <span className={`status-badge ${getStatusStyle(s)}`}>{s}</span>
+                    {locked && <span className="ml-auto text-[10px] text-gray-400">権限なし</span>}
                   </label>
-                ))}
+                  );
+                })}
               </div>
+              {!canDecide && (
+                <p className="text-xs text-amber-600 mb-3">合否（合格/不合格/補欠合格/保留）の決定権限がありません。閲覧・その他の状態変更は可能です。</p>
+              )}
 
-              {/* 合否メール送信オプション */}
-              {showSendResultEmail && (
+              {/* 合否メール送信オプション（notification.send 権限がある時のみ） */}
+              {showSendResultEmail && canNotify && (
                 <label className="flex items-center gap-2 mb-3 p-2.5 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer">
                   <input
                     type="checkbox"

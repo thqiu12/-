@@ -860,7 +860,7 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
 
   if (!applicationId) return (
     <div className="text-center py-12 text-gray-400">
-      <div className="text-4xl mb-3">⚠️</div>
+      <Icon name="info" className="w-10 h-10 mx-auto mb-3" />
       <p className="text-sm">申請情報が保存されていません。前のステップに戻ってください。</p>
     </div>
   );
@@ -1159,7 +1159,7 @@ function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedD
   return (
     <div className="space-y-3">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-2">
-        <span>⚠️</span>
+        <Icon name="info" className="w-4 h-4 shrink-0" />
         <p>以下の内容をご確認の上、「提出する」ボタンを押してください。提出後の内容変更はできません。</p>
       </div>
       <Section title="個人情報">
@@ -1804,18 +1804,35 @@ function ApplyPageInner() {
     return true;
   };
 
+  // 検証失敗時：最初のエラー項目までスクロールしてフォーカス（無ければトップ）
+  const scrollToFirstError = () => {
+    requestAnimationFrame(() => {
+      const alert = document.querySelector('[role="alert"]') as HTMLElement | null;
+      if (alert) {
+        alert.scrollIntoView({ behavior: "smooth", block: "center" });
+        const field = alert.closest("div")?.querySelector("input, select, textarea") as HTMLElement | null;
+        try { field?.focus({ preventScroll: true }); } catch { /* ignore */ }
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  };
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
   const handleNext = async () => {
     setSubmitError(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    if (currentStep === 1) { if (!validateStep1()) return; setCurrentStep(2); }
+    if (currentStep === 1) {
+      if (!validateStep1()) { scrollToFirstError(); return; }
+      setCurrentStep(2); scrollTop();
+    }
     else if (currentStep === 2) {
-      if (!validateStep2()) return;
+      if (!validateStep2()) { scrollToFirstError(); return; }
       setSubmitting(true);
       const ok = await saveStep1And2();
       setSubmitting(false);
-      if (!ok) return;
+      if (!ok) { scrollTop(); return; }
       // Show 出願番号発行 confirmation screen instead of going directly to Step 3
-      setShowAppNoConfirm(true);
+      setShowAppNoConfirm(true); scrollTop();
     } else if (currentStep === 3) {
       // 必須書類のアップロードチェック
       if (formConfig) {
@@ -1836,7 +1853,7 @@ function ApplyPageInner() {
           }),
         });
       }
-      setCurrentStep(4);
+      setCurrentStep(4); scrollTop();
     } else if (currentStep === 4) {
       // 選考費が未払いのまま確認画面に進ませない
       if (examFeeStatus === "未払い") {
@@ -1844,7 +1861,7 @@ function ApplyPageInner() {
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
-      setCurrentStep(5);
+      setCurrentStep(5); scrollTop();
     }
   };
 
@@ -2035,7 +2052,7 @@ function ApplyPageInner() {
               {currentStep === 3 && <>
                 {errors.step3 && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
-                    <span>⚠️</span><span>{errors.step3}</span>
+                    <Icon name="info" className="w-4 h-4 shrink-0" /><span>{errors.step3}</span>
                   </div>
                 )}
                 <Step3 applicationId={applicationId} applicationNo={applicationNo} email={form.email}
@@ -2053,7 +2070,7 @@ function ApplyPageInner() {
 
         {submitError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
-            <span>⚠️</span>{submitError}
+            <Icon name="info" className="w-4 h-4 shrink-0" />{submitError}
           </div>
         )}
 
