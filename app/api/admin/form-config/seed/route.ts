@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession, isCoreAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { FORM_FIELD_DEFAULTS } from "@/lib/formFieldDefaults";
 
 // POST: デフォルト値でシード
@@ -9,7 +10,7 @@ import { FORM_FIELD_DEFAULTS } from "@/lib/formFieldDefaults";
 // - schoolId == "xxx" -> seed school-specific from global defaults if school-specific is empty
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "form.edit"))) {
     return NextResponse.json({ error: "出願フォームを編集する権限がありません" }, { status: 403 });
   }
 

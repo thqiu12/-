@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin as checkAdmin } from "@/lib/auth";
+import { hasCapability, DECISION_STATUSES } from "@/lib/permissions";
 import { ApplicationPatchSchema } from "@/lib/schemas";
 import { logError } from "@/lib/logger";
 import type { Prisma } from "@prisma/client";
@@ -79,7 +80,13 @@ export async function PATCH(
     }
 
     const updateData: Prisma.ApplicationUpdateInput = {};
-    if (body.status !== undefined) updateData.status = body.status;
+    if (body.status !== undefined) {
+      // 合否「決定」への変更は result.decide 権限が必要（一般編集は admin/sales 可）
+      if (DECISION_STATUSES.includes(body.status) && !(await hasCapability(session, "result.decide"))) {
+        return NextResponse.json({ error: "合否を決定する権限がありません" }, { status: 403 });
+      }
+      updateData.status = body.status;
+    }
     if (body.adminMemo !== undefined) updateData.adminMemo = body.adminMemo;
     if (body.interviewDate !== undefined) updateData.interviewDate = body.interviewDate;
     if (body.interviewTime !== undefined) updateData.interviewTime = body.interviewTime;
@@ -198,8 +205,11 @@ export async function DELETE(
 ) {
   const session = await getSession(request);
   try {
-    if (!checkAdmin(session)) {
+    if (!session) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+    if (!(await hasCapability(session, "application.delete"))) {
+      return NextResponse.json({ error: "申請を削除する権限がありません" }, { status: 403 });
     }
     await prisma.application.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true });

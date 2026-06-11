@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession, isAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { logError } from "@/lib/logger";
 import { z } from "zod";
 
@@ -14,8 +15,11 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   const session = await getSession(request);
-  if (!isAdmin(session)) {
+  if (!session) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
+  if (!(await hasCapability(session, "document.review"))) {
+    return NextResponse.json({ error: "書類審査の権限がありません" }, { status: 403 });
   }
   try {
     const parsed = DocumentReviewSchema.safeParse(await request.json());

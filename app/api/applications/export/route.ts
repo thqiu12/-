@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { escapeCsv, formatDateTimeJP } from "@/lib/utils";
-import { getSession, isAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { logError } from "@/lib/logger";
 
 const HEADERS = [
@@ -17,8 +18,11 @@ const PAGE_SIZE = 500;
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
-  if (!isAdmin(session)) {
+  if (!session) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
+  if (!(await hasCapability(session, "data.export"))) {
+    return NextResponse.json({ error: "エクスポートの権限がありません" }, { status: 403 });
   }
 
   try {

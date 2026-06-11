@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession, isAdmin as checkAdmin, isCoreAdmin } from "@/lib/auth";
+import { getSession, isAdmin as checkAdmin } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { FORM_FIELD_DEFAULTS } from "@/lib/formFieldDefaults";
 
 // schoolId=xxx -> school-specific merged with global
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
 // POST: create a new field config
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "form.edit"))) {
     return NextResponse.json({ error: "出願フォームを編集する権限がありません" }, { status: 403 });
   }
 
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
 // PUT: upsert array of field configs (with schoolId field)
 export async function PUT(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "form.edit"))) {
     return NextResponse.json({ error: "出願フォームを編集する権限がありません" }, { status: 403 });
   }
 
@@ -212,7 +213,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: delete a field config (only custom_ or doc_ prefixed fields)
 export async function DELETE(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "form.edit"))) {
     return NextResponse.json({ error: "出願フォームを編集する権限がありません" }, { status: 403 });
   }
 
@@ -243,7 +244,7 @@ export async function DELETE(request: NextRequest) {
 // PATCH: 特定学校の全カスタム設定を削除（グローバルに戻す）
 export async function PATCH(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "form.edit"))) {
     return NextResponse.json({ error: "出願フォームを編集する権限がありません" }, { status: 403 });
   }
   try {

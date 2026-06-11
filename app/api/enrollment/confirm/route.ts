@@ -1,4 +1,5 @@
-import { getSession, isAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,8 +7,11 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
   try {
-    if (!isAdmin(session)) {
+    if (!session) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+    if (!(await hasCapability(session, "enrollment.manage"))) {
+      return NextResponse.json({ error: "入学手続きを管理する権限がありません" }, { status: 403 });
     }
 
     const body = await request.json();

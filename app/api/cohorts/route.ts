@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession, isAdmin, isCoreAdmin } from "@/lib/auth";
+import { getSession, isAdmin } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { CohortCreateSchema, CohortPatchSchema } from "@/lib/schemas";
 import { logError } from "@/lib/logger";
 import type { Prisma } from "@prisma/client";
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "cohort.manage"))) {
     return NextResponse.json({ error: "選考を操作する権限がありません" }, { status: 403 });
   }
   try {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "cohort.manage"))) {
     return NextResponse.json({ error: "選考を操作する権限がありません" }, { status: 403 });
   }
   try {
@@ -122,7 +123,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const session = await getSession(request);
-  if (!isCoreAdmin(session)) {
+  if (!(await hasCapability(session, "cohort.manage"))) {
     return NextResponse.json({ error: "選考を操作する権限がありません" }, { status: 403 });
   }
   try {

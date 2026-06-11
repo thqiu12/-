@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { getSession, isAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 import { NotificationSchema } from "@/lib/schemas";
 import { escapeHtml } from "@/lib/security";
 import { ENV } from "@/lib/env";
@@ -279,8 +280,11 @@ ${e(payload.instructions)}
 
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
-  if (!isAdmin(session)) {
+  if (!session) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
+  if (!(await hasCapability(session, "notification.send"))) {
+    return NextResponse.json({ error: "メール送信の権限がありません" }, { status: 403 });
   }
   try {
     const parsed = NotificationSchema.safeParse(await request.json());

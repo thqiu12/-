@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, isAdmin as checkAdmin } from "@/lib/auth";
+import { hasCapability } from "@/lib/permissions";
 
 // POST: 志望校追加
 export async function POST(
@@ -14,6 +15,9 @@ export async function POST(
     const body = await request.json();
     const { priority, schoolName, department, course, enrollmentYear, enrollmentMonth, result, memo } = body;
 
+    if (result && !(await hasCapability(session, "result.decide"))) {
+      return NextResponse.json({ error: "合否を決定する権限がありません" }, { status: 403 });
+    }
     if (!schoolName || !department || !enrollmentYear || !enrollmentMonth) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
     }
@@ -54,6 +58,10 @@ export async function PATCH(
     const body = await request.json();
     const { schoolId } = body;
     if (!schoolId) return NextResponse.json({ error: "schoolIdが必要です" }, { status: 400 });
+
+    if (body.result !== undefined && body.result && !(await hasCapability(session, "result.decide"))) {
+      return NextResponse.json({ error: "合否を決定する権限がありません" }, { status: 403 });
+    }
 
     // 許可するフィールドだけ抽出（任意のカラムを書き換えられないように）
     const ALLOWED = new Set([

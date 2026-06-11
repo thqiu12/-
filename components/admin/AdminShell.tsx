@@ -57,6 +57,7 @@ const NAV: NavSection[] = [
       { href: "/admin/quota",       label: "定員管理",   icon: "chart" },
       { href: "/admin/form-config", label: "フォーム管理", icon: "wrench" },
       { href: "/admin/accounts",    label: "アカウント", icon: "users" },
+      { href: "/admin/permissions", label: "権限設定",   icon: "wrench" },
     ],
   },
 ];
@@ -91,7 +92,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const filteredNav = NAV.map((sec) => ({
     ...sec,
     items: sec.items.filter((it) => {
-      if (it.href === "/admin/accounts" && me?.role !== "super_admin") return false;
+      if ((it.href === "/admin/accounts" || it.href === "/admin/permissions") && me?.role !== "super_admin") return false;
       if (me?.role === "sales" && salesHidden.has(it.href)) return false;
       return true;
     }),

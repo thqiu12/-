@@ -7,6 +7,7 @@ import { logError, logger } from "@/lib/logger";
 import { sendBatch } from "@/lib/email";
 import { ENV } from "@/lib/env";
 import { buildRecipientWhere } from "@/lib/announcement-targeting";
+import { hasCapability } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -59,6 +60,9 @@ export async function PATCH(request: NextRequest) {
     if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
 
     if (action === "send") {
+      if (!(await hasCapability(session, "announcement.send"))) {
+        return NextResponse.json({ error: "お知らせ送信の権限がありません" }, { status: 403 });
+      }
       return await handleSend(id);
     }
 
