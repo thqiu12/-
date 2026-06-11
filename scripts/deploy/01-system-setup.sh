@@ -171,7 +171,8 @@ EOF
 fi
 
 # deploy 用に GitHub から公開鍵を取得（任意）
-if [ -n "$GITHUB_USER_FOR_SSH_KEYS" ]; then
+# 既に authorized_keys がある場合は上書きしない（ssh-copy-id 済みの鍵を保護＝締め出し防止）。
+if [ -n "$GITHUB_USER_FOR_SSH_KEYS" ] && [ ! -f "/home/$DEPLOY_USER/.ssh/authorized_keys" ]; then
   log "deploy ユーザーの authorized_keys を GitHub の鍵で初期化"
   install -d -m 0700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/$DEPLOY_USER/.ssh"
   if curl -fsSL "https://github.com/${GITHUB_USER_FOR_SSH_KEYS}.keys" -o "/home/$DEPLOY_USER/.ssh/authorized_keys.new"; then
