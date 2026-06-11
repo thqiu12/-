@@ -18,7 +18,6 @@
 set -uo pipefail
 
 APP_DIR="${APP_DIR:-/srv/senmon/app}"
-UPLOAD_DIR="${UPLOAD_DIR:-/srv/senmon/private/uploads}"
 WORK_DIR="${WORK_DIR:-/srv/senmon/backup/offsite-tmp}"
 LOG="${OFFSITE_LOG:-/srv/senmon/backup/offsite.log}"
 PASS_FILE="${BACKUP_PASS_FILE:-/srv/senmon/secrets/backup.pass}"
@@ -34,6 +33,15 @@ if [ -z "${DB_PATH:-}" ]; then
   if   [ -f "$APP_DIR/prisma/prisma/data.db" ]; then DB_PATH="$APP_DIR/prisma/prisma/data.db"
   elif [ -f "$APP_DIR/prisma/data.db" ];        then DB_PATH="$APP_DIR/prisma/data.db"
   else DB_PATH="$APP_DIR/prisma/prisma/data.db"; fi
+fi
+
+# アップロード書類のパス検出:
+#   .env の UPLOAD_DIR="private/uploads"（相対）はアプリ実行時 cwd=APP_DIR 基準で
+#   解決され、実体は app/private/uploads。旧/絶対構成もフォールバック。
+if [ -z "${UPLOAD_DIR:-}" ]; then
+  if   [ -d "$APP_DIR/private/uploads" ];    then UPLOAD_DIR="$APP_DIR/private/uploads"
+  elif [ -d "/srv/senmon/private/uploads" ]; then UPLOAD_DIR="/srv/senmon/private/uploads"
+  else UPLOAD_DIR="$APP_DIR/private/uploads"; fi
 fi
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }

@@ -13,8 +13,13 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/srv/senmon/app}"
-UPLOAD_DIR="${UPLOAD_DIR:-/srv/senmon/private/uploads}"
 BACKUP_DIR="${BACKUP_DIR:-/srv/senmon/backup}"
+# UPLOAD_DIR: .env が相対(private/uploads)指定のため実体は app/private/uploads。
+if [ -z "${UPLOAD_DIR:-}" ]; then
+  if   [ -d "$APP_DIR/private/uploads" ];    then UPLOAD_DIR="$APP_DIR/private/uploads"
+  elif [ -d "/srv/senmon/private/uploads" ]; then UPLOAD_DIR="/srv/senmon/private/uploads"
+  else UPLOAD_DIR="$APP_DIR/private/uploads"; fi
+fi
 KEEP_DAYS="${KEEP_DAYS:-7}"
 
 TS="$(date +%Y%m%d-%H%M%S)"
