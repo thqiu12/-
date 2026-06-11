@@ -94,7 +94,10 @@ body {
   }
 
   .wsdb-sidebar {
-    @apply min-h-screen flex flex-col gap-3 py-5 px-3 sticky top-0;
+    /* 高さをビューポート固定にし、グリッド行へのストレッチを抑止（self-start）。
+       これで右コンテンツが高くても下部のユーザー欄が常に画面下に固定される。
+       ナビが長い場合はサイドバー内でスクロール（overflow-y-auto）。 */
+    @apply h-screen self-start overflow-y-auto flex flex-col gap-3 py-5 px-3 sticky top-0;
     background: #0d1219;
   }
 
