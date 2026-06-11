@@ -82,6 +82,29 @@ bash /srv/senmon/app/scripts/deploy/offsite-restore.sh uploads uploads-YYYYMMDD-
 
 ---
 
+## C-2. 失敗通知（任意・推奨）
+
+バックアップが失敗したら気づけるよう、メール通知と死活監視を設定できる。
+`/srv/senmon/secrets/backup-alert.env` を作るだけ（無ければ通知なしで通常動作）。
+
+```bash
+sudo tee /srv/senmon/secrets/backup-alert.env >/dev/null <<'EOF'
+RESEND_API_KEY="re_..."           # 送信用（アプリの .env と同じキーで可）
+RESEND_FROM="専門学校 入学係 <no-reply@認証済みドメイン>"
+ALERT_EMAIL="you@example.com"     # 失敗時の通知先
+# 任意: 死活監視（healthchecks.io 等）。成功pingが途絶えると先方が通知してくれる
+# ＝「cron 自体が動かなくなった」ケースも検知できる
+# HEALTHCHECK_URL="https://hc-ping.com/xxxxxxxx"
+EOF
+sudo chown "$USER:$USER" /srv/senmon/secrets/backup-alert.env
+sudo chmod 600 /srv/senmon/secrets/backup-alert.env
+```
+
+- 失敗時：`ALERT_EMAIL` 宛にメール。
+- `HEALTHCHECK_URL` を設定した場合：成功で ping、失敗で `/fail` ping。
+  healthchecks.io（無料）でチェックを1つ作り、期待間隔を「1日 + 余裕」にすると、
+  バックアップが来ない＝サーバー停止/cron停止も検知できる（dead man's switch）。
+
 ## D. 保管設計
 - 保存先：`r2:senmon-backup/db/` と `/uploads/`、ファイル名は日時付き。
 - 世代管理：R2 上で **90日**より古いものを自動削除（`KEEP_DAYS` で変更可）。

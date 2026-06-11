@@ -49,6 +49,35 @@ log() { echo "[$(ts)] $*" >> "$LOG"; }
 
 mkdir -p "$WORK_DIR" "$(dirname "$LOG")"
 
+# ---- 失敗通知（任意） ----
+# /srv/senmon/secrets/backup-alert.env があれば読み込む（無ければ通知なしで通常動作）:
+#   RESEND_API_KEY="re_..."   RESEND_FROM="...<...>"   ALERT_EMAIL="you@example.com"
+#   HEALTHCHECK_URL="https://hc-ping.com/xxxx"   # 任意: 成功pingが途絶えたら外部監視が通知
+ALERT_ENV="${ALERT_ENV:-/srv/senmon/secrets/backup-alert.env}"
+# shellcheck disable=SC1090
+[ -f "$ALERT_ENV" ] && . "$ALERT_ENV"
+
+notify_failure() {
+  [ -n "${RESEND_API_KEY:-}" ] && [ -n "${RESEND_FROM:-}" ] && [ -n "${ALERT_EMAIL:-}" ] || return 0
+  curl -s -X POST https://api.resend.com/emails \
+    -H "Authorization: Bearer ${RESEND_API_KEY}" -H "Content-Type: application/json" \
+    -d "{\"from\":\"${RESEND_FROM}\",\"to\":\"${ALERT_EMAIL}\",\"subject\":\"[senmon] オフサイトバックアップ失敗\",\"text\":\"$1\"}" \
+    >/dev/null 2>&1 || true
+}
+
+# 終了時フック: 失敗ならメール通知＋死活監視に fail ping、成功なら ok ping。
+on_exit() {
+  ec=$?
+  if [ "$ec" -ne 0 ]; then
+    log "ERROR: バックアップ異常終了 (exit=$ec) → 通知送信"
+    notify_failure "$(ts): senmon オフサイトバックアップが失敗しました (exit=$ec)。サーバーで $LOG を確認してください。"
+    [ -n "${HEALTHCHECK_URL:-}" ] && curl -fsS -m 10 "${HEALTHCHECK_URL}/fail" >/dev/null 2>&1 || true
+  else
+    [ -n "${HEALTHCHECK_URL:-}" ] && curl -fsS -m 10 "${HEALTHCHECK_URL}" >/dev/null 2>&1 || true
+  fi
+}
+trap on_exit EXIT
+
 # ---- 事前チェック ----
 command -v rclone >/dev/null 2>&1 || { log "ERROR: rclone 未インストール"; exit 1; }
 command -v gpg    >/dev/null 2>&1 || { log "ERROR: gpg 未インストール"; exit 1; }
