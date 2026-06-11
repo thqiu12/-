@@ -18,7 +18,7 @@
 set -euo pipefail
 
 # ---------- 設定（必要に応じて変更） ----------
-DEPLOY_USER="deploy"
+DEPLOY_USER="${DEPLOY_USER:-deploy}"   # env で上書き可（本番は既存 admin に揃える: DEPLOY_USER=admin）
 SWAP_SIZE_MB=2048
 UPLOAD_DIR="/srv/senmon/private/uploads"
 APP_DIR="/srv/senmon/app"
