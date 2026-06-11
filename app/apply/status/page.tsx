@@ -618,7 +618,9 @@ function StatusPageInner() {
       const res = await fetch(`/api/applications/status?${params}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "確認に失敗しました");
+        setError(res.status >= 500
+          ? "ただいま確認できませんでした。お手数ですが時間をおいて再度お試しください。"
+          : "出願番号またはメールアドレスが一致しません。入力内容（半角・大文字小文字）をご確認のうえ再度お試しください。解決しない場合は学校までお問い合わせください。");
       } else {
         setResult(data);
         setStudentMemo(data.enrollmentProcedure?.studentMemo || "");
@@ -1048,7 +1050,7 @@ function StatusPageInner() {
                   <p className="font-mono text-sm font-bold text-navy-800">{result.applicationNo}</p>
                 </div>
                 <button
-                  onClick={() => { setResult(null); setError(null); }}
+                  onClick={() => { setResult(null); setError(null); setApplicationNo(""); setEmail(""); }}
                   className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg"
                 >
                   別の申請を確認
@@ -1234,6 +1236,46 @@ function StatusPageInner() {
               )}
 
               {/* 進捗バー */}
+              {/* 不合格・保留：進捗を消さず終端状態を表示 */}
+              {(result.status === "不合格" || result.status === "保留") && (() => {
+                const isHold = result.status === "保留";
+                const steps = ["受付", "書類審査", "面接", isHold ? "審査保留中" : "選考終了"];
+                return (
+                  <div className="mb-6">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-4">審査の進捗</p>
+                    <div className="relative">
+                      <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200" />
+                      <div className={`absolute top-4 left-4 right-4 h-0.5 ${isHold ? "bg-amber-400" : "bg-gray-400"}`} />
+                      <div className="relative flex justify-between">
+                        {steps.map((label, i) => {
+                          const isTerminal = i === steps.length - 1;
+                          return (
+                            <div key={label} className="flex flex-col items-center" style={{ width: `${100 / steps.length}%` }}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 z-10 ${
+                                isTerminal
+                                  ? (isHold ? "bg-amber-500 border-amber-500 text-white" : "bg-gray-400 border-gray-400 text-white")
+                                  : "bg-navy-800 border-navy-800 text-white"
+                              }`}>
+                                {isTerminal ? (
+                                  isHold ? (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" /></svg>
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                                  )
+                                ) : (
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                )}
+                              </div>
+                              <span className={`text-center leading-tight mt-1 ${isTerminal ? (isHold ? "text-amber-700 font-bold" : "text-gray-600 font-bold") : "text-navy-600"}`} style={{ fontSize: "10px" }}>{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {result.status !== "不合格" && result.status !== "保留" && result.status !== "補欠合格" && (() => {
                 // 書類に差し戻しがある場合、書類確認中ステップを「差し戻し中」表示にする
                 const rejectedDocs = (result.documents || []).filter((d) => d.status === "差し戻し" && !d.docType.startsWith("入学手続き_"));
@@ -1783,6 +1825,29 @@ function StatusPageInner() {
                   const step3Done = signatureSaved || !!result.enrollmentSignature;
                   const allDone = step1Done && step2Done && step3Done;
 
+                  // 提出期限の超過判定（期限日の終わり 23:59 まで有効）。未完了のステップのみロック対象。
+                  const isPastDeadline = (d: string | null) => {
+                    if (!d) return false;
+                    const due = new Date(d);
+                    if (isNaN(due.getTime())) return false;
+                    due.setHours(23, 59, 59, 999);
+                    return new Date() > due;
+                  };
+                  const step1Expired = !step1Done && isPastDeadline(ep.step1Deadline);
+                  const step2Expired = step1Done && !step2Done && isPastDeadline(ep.step2Deadline);
+                  const step3Expired = step1Done && step2Done && !step3Done && isPastDeadline(ep.step3Deadline);
+                  const expiredBanner = (label: string) => (
+                    <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.01M10.34 4.66l-7.1 12.3A1.5 1.5 0 004.55 19.5h14.9a1.5 1.5 0 001.31-2.54l-7.1-12.3a1.5 1.5 0 00-2.62 0z" />
+                      </svg>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-red-800">{label}の提出期限を超過しています</p>
+                        <p className="text-xs text-red-700 mt-0.5">このままでは手続きを受け付けられない場合があります。お手数ですが入学相談室までお問い合わせください。</p>
+                      </div>
+                    </div>
+                  );
+
                   return (
                     <div className="space-y-4">
 
@@ -1798,8 +1863,8 @@ function StatusPageInner() {
                             </p>
                           </div>
                           {ep.step1Deadline && (
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step1Done ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700"}`}>
-                              期限：{formatDateOnly(ep.step1Deadline)}
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step1Done ? "bg-green-100 text-green-600" : step1Expired ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                              {step1Expired ? "期限超過" : `期限：${formatDateOnly(ep.step1Deadline)}`}
                             </span>
                           )}
                         </div>
@@ -1832,7 +1897,7 @@ function StatusPageInner() {
                           {/* 振込証明書アップロード */}
                           <div>
                             <p className="text-xs font-medium text-gray-600 mb-2">振込完了後、振込証明書（レシート・明細）をアップロードしてください</p>
-                            {(() => {
+                            {step1Expired ? expiredBanner("学費納入") : (() => {
                               const docKey = "入学手続き_振込証明書";
                               const isUploaded = uploadedDocs[docKey] || false;
                               const isUploading = uploadingDocType === docKey;
@@ -1868,14 +1933,14 @@ function StatusPageInner() {
                             </p>
                           </div>
                           {ep.step2Deadline && (
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step2Done ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700"}`}>
-                              期限：{formatDateOnly(ep.step2Deadline)}
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step2Done ? "bg-green-100 text-green-600" : step2Expired ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                              {step2Expired ? "期限超過" : `期限：${formatDateOnly(ep.step2Deadline)}`}
                             </span>
                           )}
                         </div>
                         <div className="p-4">
                           {!step1Done && <p className="text-xs text-gray-400 text-center py-2">STEP 1（学費納入）を完了してから進んでください</p>}
-                          {step1Done && (
+                          {step1Done && (step2Expired ? expiredBanner("書類提出") : (
                             <div className="divide-y divide-gray-100">
                               {checklistItems.map((item, i) => {
                                 const docKey = `入学手続き_${item.name}`;
@@ -1899,7 +1964,7 @@ function StatusPageInner() {
                                 );
                               })}
                             </div>
-                          )}
+                          ))}
                         </div>
                       </div>
 
@@ -1915,8 +1980,8 @@ function StatusPageInner() {
                             </p>
                           </div>
                           {ep.step3Deadline && (
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step3Done ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700"}`}>
-                              期限：{formatDateOnly(ep.step3Deadline)}
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${step3Done ? "bg-green-100 text-green-600" : step3Expired ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                              {step3Expired ? "期限超過" : `期限：${formatDateOnly(ep.step3Deadline)}`}
                             </span>
                           )}
                         </div>
@@ -1931,7 +1996,7 @@ function StatusPageInner() {
                                   {result.enrollmentSignature && <p className="text-xs text-green-600">{result.enrollmentSignature.signerName} · {formatDate(result.enrollmentSignature.signedAt)}</p>}
                                 </div>
                               </div>
-                            ) : (
+                            ) : step3Expired ? expiredBanner("電子署名") : (
                               <>
                                 <div className="mb-3">
                                   <label className="block text-xs font-medium text-gray-600 mb-1">署名者氏名（フルネーム）</label>
