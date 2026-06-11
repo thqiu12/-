@@ -592,7 +592,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
       {/* メイン志望校：固定表示 */}
       <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{selectedSchool?.icon ?? "🏫"}</span>
+          <Icon name={schoolIconName(selectedSchool?.icon)} className="w-7 h-7 text-blue-700 shrink-0" />
           <div className="flex-1">
             <p className="text-xs text-gray-500">{selectedSchool?.hojin ?? ""}</p>
             <p className="font-bold text-blue-700 text-base">{selectedSchool?.name ?? form.schoolName}</p>
@@ -622,7 +622,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
           <div key={idx} className="border-2 border-orange-200 rounded-xl p-4 space-y-4 bg-orange-50/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{addSchool.icon}</span>
+                <Icon name={schoolIconName(addSchool.icon)} className="w-7 h-7 text-gray-600 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-500">{addSchool.hojin}</p>
                   <p className="font-bold text-gray-800">{addSchool.name}</p>
@@ -659,9 +659,9 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
             {availableForAdditional.map(s => (
               <button key={s.id} type="button" onClick={() => onAddAdditional(s)}
                 className="flex items-center gap-2 text-sm px-3 py-2 border border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition">
-                <span>{s.icon}</span>
+                <Icon name={schoolIconName(s.icon)} className="w-4 h-4 text-gray-500 shrink-0" />
                 <span className="font-medium text-gray-700">{s.name}</span>
-                <span className="text-blue-500">＋</span>
+                <span className="text-blue-500 font-bold">＋</span>
               </button>
             ))}
           </div>
@@ -833,6 +833,16 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const overSizeMsg = "ファイルサイズが大きすぎます（最大10MB）。圧縮するか別のファイルを選んでください。";
 
+// 学校の icon 文字列（DB/fallback 由来の絵文字）を SVG アイコン名にマップ（絵文字を直接描画しない）
+function schoolIconName(icon?: string | null): IconName {
+  switch (icon) {
+    case "📚": return "book";
+    case "💻": return "monitor";
+    case "⚕️": return "stethoscope";
+    default: return "school";
+  }
+}
+
 function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, onDelete, formConfig }: {
   applicationId: string | null;
   applicationNo: string | null;
@@ -876,9 +886,9 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
       <div key={key} className="bg-white rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium text-gray-800">📎 {label}</p>
+            <p className="text-sm font-medium text-gray-800 inline-flex items-center gap-1.5"><Icon name="doc" className="w-4 h-4 text-gray-400" />{label}</p>
             {uploaded.length > 0 && (
-              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">✓ {uploaded.length}件</span>
+              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold inline-flex items-center gap-0.5"><Icon name="check" className="w-3 h-3" />{uploaded.length}件</span>
             )}
           </div>
           {description && (
@@ -888,10 +898,10 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
             <div className="mt-1.5 space-y-1">
               {uploaded.map(u => (
                 <div key={u.id} className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="text-green-500">📄</span>
+                  <Icon name="doc" className="w-4 h-4 text-green-500 shrink-0" />
                   <span className="truncate">{u.originalName}</span>
                   <span className="shrink-0 text-gray-400">{formatSize(u.fileSize)}</span>
-                  <button onClick={() => handleDelete(u.id)} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
+                  <button onClick={() => handleDelete(u.id)} aria-label="削除" className="text-red-400 hover:text-red-600 shrink-0"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" /></svg></button>
                 </div>
               ))}
             </div>
@@ -922,7 +932,7 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
-        <p className="font-semibold mb-1">📎 書類アップロードのご案内</p>
+        <p className="font-semibold mb-1 flex items-center gap-1.5"><Icon name="doc" className="w-4 h-4" />書類アップロードのご案内</p>
         <ul className="list-disc list-inside space-y-0.5 text-blue-700 text-xs">
           <li>対応形式：JPEG、PNG、PDF（各ファイル最大10MB）</li>
           <li>書類は鮮明に撮影・スキャンしてください</li>
@@ -986,7 +996,7 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-medium text-gray-800">{doc.type}</p>
                             {uploaded.length > 0 && (
-                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">✓ {uploaded.length}件</span>
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold inline-flex items-center gap-0.5"><Icon name="check" className="w-3 h-3" />{uploaded.length}件</span>
                             )}
                           </div>
                           <p className="text-xs text-gray-400 mt-0.5">{doc.desc}</p>
@@ -994,10 +1004,10 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
                             <div className="mt-1.5 space-y-1">
                               {uploaded.map(u => (
                                 <div key={u.id} className="flex items-center gap-2 text-xs text-gray-500">
-                                  <span className="text-green-500">📄</span>
+                                  <Icon name="doc" className="w-4 h-4 text-green-500 shrink-0" />
                                   <span className="truncate">{u.originalName}</span>
                                   <span className="shrink-0 text-gray-400">{formatSize(u.fileSize)}</span>
-                                  <button onClick={() => handleDelete(u.id)} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
+                                  <button onClick={() => handleDelete(u.id)} aria-label="削除" className="text-red-400 hover:text-red-600 shrink-0"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" /></svg></button>
                                 </div>
                               ))}
                             </div>
@@ -1129,8 +1139,9 @@ function Step4Payment({ applicationId, applicationNo, email, schoolCount, feeSta
                     title="クリックでコピー"
                     className="font-semibold text-gray-900 text-left flex items-center gap-1.5 min-w-0 hover:text-blue-700 transition-colors">
                     <span className="truncate">{v}</span>
-                    <span className={`text-[10px] shrink-0 font-bold ${copiedKey === k ? "text-green-600" : "text-blue-500"}`}>
-                      {copiedKey === k ? "✓ コピー" : "コピー"}
+                    <span className={`text-[10px] shrink-0 font-bold inline-flex items-center gap-0.5 ${copiedKey === k ? "text-green-600" : "text-blue-500"}`}>
+                      {copiedKey === k && <Icon name="check" className="w-3 h-3" />}
+                      {copiedKey === k ? "コピー済み" : "コピー"}
                     </span>
                   </button>
                 ) : (
@@ -1282,7 +1293,7 @@ function Step5({ form, uploadedDocs }: { form: FormData; uploadedDocs: UploadedD
           <div className="space-y-2">
             {uploadedDocs.map(doc => (
               <div key={doc.id} className="flex items-center gap-2 text-sm">
-                <span className="text-green-500">✅</span>
+                <Icon name="check" className="w-4 h-4 text-green-500 shrink-0" />
                 <span className="font-medium text-gray-700">{doc.docType}</span>
                 <span className="text-gray-400 text-xs">— {doc.originalName}</span>
               </div>
@@ -1309,7 +1320,7 @@ function ApplicationNoConfirm({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🎉</div>
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><Icon name="check" className="w-8 h-8" strokeWidth={2.2} /></div>
         <h2 className="text-xl font-bold text-gray-800 mb-1">出願番号が発行されました</h2>
         <p className="text-sm text-gray-500">ステップ1・2の情報を受け付けました</p>
       </div>
@@ -1322,7 +1333,7 @@ function ApplicationNoConfirm({
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-        <p className="font-semibold mb-1">💡 この番号でできること</p>
+        <p className="font-semibold mb-1 flex items-center gap-1.5"><Icon name="lightbulb" className="w-4 h-4" />この番号でできること</p>
         <p className="text-xs text-blue-700">
           この番号でいつでもログインして書類アップロード・選考料のお支払いができます。
           後から続ける場合は{" "}
@@ -1378,7 +1389,7 @@ function SaveAndExitScreen({ applicationNo, email }: { applicationNo: string; em
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="max-w-md w-full">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">📋</div>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600"><Icon name="clipboard" className="w-8 h-8" /></div>
             <h2 className="text-xl font-bold text-gray-800 mb-2">出願を一時保存しました</h2>
             <p className="text-gray-500 text-sm">後から書類アップロードを再開できます</p>
           </div>
@@ -1420,9 +1431,9 @@ function SaveAndExitScreen({ applicationNo, email }: { applicationNo: string; em
           <div className="flex flex-col gap-3">
             <Link
               href={`/apply/status?applicationNo=${encodeURIComponent(applicationNo)}&email=${encodeURIComponent(email)}`}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition text-center"
+              className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition inline-flex items-center justify-center gap-1.5"
             >
-              📋 出願を再開する
+              <Icon name="clipboard" className="w-4 h-4" />出願を再開する
             </Link>
             <Link
               href="/"
@@ -2004,7 +2015,7 @@ function ApplyPageInner() {
               次回の選考情報は各校の入学相談室にお問い合わせください。
             </p>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800 text-left">
-              <p className="font-bold mb-1">📞 お問い合わせ</p>
+              <p className="font-bold mb-1 flex items-center gap-1.5"><Icon name="phone" className="w-4 h-4" />お問い合わせ</p>
               <p>各校の入学相談室（平日 9:00〜17:00）</p>
             </div>
             <a href="/" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
@@ -2027,7 +2038,7 @@ function ApplyPageInner() {
         </header>
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md w-full text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">✅</div>
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600"><Icon name="check" className="w-10 h-10" strokeWidth={2.2} /></div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">出願が完了しました</h2>
             <p className="text-gray-500 text-sm mb-8">書類を受付いたしました。審査結果はメールにてお知らせします。</p>
             <div className="rounded-2xl p-6 mb-8 text-white" style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #2c5a82 100%)" }}>
@@ -2065,7 +2076,7 @@ function ApplyPageInner() {
         {/* ===== 下書きバナー ===== */}
         {draftBanner === "ask" && !applicationId && !isResumed && (
           <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-            <span className="text-xl shrink-0">📝</span>
+            <Icon name="pencil" className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-800 mb-1">下書きが保存されています。続きから入力しますか？</p>
               <div className="flex gap-2 flex-wrap mt-2">
@@ -2204,7 +2215,7 @@ function ApplyPageInner() {
                   onClick={() => { saveDraftToStorage(form); toast("下書きを保存しました", "success"); }}
                   className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-lg bg-white transition flex items-center gap-1.5"
                 >
-                  💾 下書きを保存
+                  <Icon name="save" className="w-4 h-4" />下書きを保存
                 </button>
               </div>
             )}

@@ -11,7 +11,7 @@ export type IconName =
   | "pencil" | "graduation" | "tag" | "handshake" | "star" | "ticket"
   | "clipboard" | "megaphone" | "book" | "chart" | "wrench" | "school"
   | "monitor" | "stethoscope" | "doc" | "mail" | "check" | "info"
-  | "yen" | "send" | "signature" | "inbox" | "award";
+  | "yen" | "send" | "signature" | "inbox" | "award" | "save" | "lightbulb";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   user: <><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0 1 14 0" /></>,
@@ -44,6 +44,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   signature: <><path d="M3 19h18" /><path d="M5 16c2-6 4-9 6-9s1 6 3 6 2-3 4-3" /></>,
   inbox: <><path d="M3 12h5l2 3h4l2-3h5" /><path d="M5 6h14l2 6v6H3v-6z" /></>,
   award: <><circle cx="12" cy="9" r="5" /><path d="M9 13l-2 8 5-3 5 3-2-8" /></>,
+  save: <><path d="M5 4h11l4 4v12H4V5a1 1 0 0 1 1-1z" /><path d="M8 4v5h7V4" /><rect x="8" y="13" width="8" height="6" /></>,
+  lightbulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z" /></>,
 };
 
 export function Icon({
