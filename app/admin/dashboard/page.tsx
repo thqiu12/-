@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getStatusStyle, getJapaneseLevelStyle, formatDateTimeJP } from "@/lib/utils";
@@ -275,7 +275,8 @@ export default function AdminDashboard() {
         {/* ===== Hero スタッツ（4枚、wsdb 風） ===== */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <div
-            className={`wsdb-stat ${statusFilter === "all" && !todayOnly ? "active" : ""}`}
+            style={{ "--reveal-delay": "0ms" } as CSSProperties}
+            className={`reveal-up wsdb-stat ${statusFilter === "all" && !todayOnly ? "active" : ""}`}
             onClick={() => { setStatusFilter("all"); setTodayOnly(false); setPage(1); }}
           >
             <div className="wsdb-stat-body">
@@ -286,7 +287,8 @@ export default function AdminDashboard() {
             <div className="wsdb-stat-icon wsdb-stat-icon-blue"><Icon name="clipboard" className="w-5 h-5" /></div>
           </div>
           <div
-            className={`wsdb-stat ${todayOnly ? "active" : ""}`}
+            style={{ "--reveal-delay": "70ms" } as CSSProperties}
+            className={`reveal-up wsdb-stat ${todayOnly ? "active" : ""}`}
             onClick={() => { setTodayOnly(v => !v); setPage(1); }}
           >
             <div className="wsdb-stat-body">
@@ -297,7 +299,8 @@ export default function AdminDashboard() {
             <div className="wsdb-stat-icon wsdb-stat-icon-amber"><Icon name="calendar" className="w-5 h-5" /></div>
           </div>
           <div
-            className={`wsdb-stat ${["受付中", "書類確認中", "面接待ち"].includes(statusFilter) ? "active" : ""}`}
+            style={{ "--reveal-delay": "140ms" } as CSSProperties}
+            className={`reveal-up wsdb-stat ${["受付中", "書類確認中", "面接待ち"].includes(statusFilter) ? "active" : ""}`}
             onClick={() => { setStatusFilter("面接待ち"); setTodayOnly(false); setPage(1); }}
           >
             <div className="wsdb-stat-body">
@@ -312,7 +315,8 @@ export default function AdminDashboard() {
             <div className="wsdb-stat-icon wsdb-stat-icon-purple"><Icon name="users" className="w-5 h-5" /></div>
           </div>
           <div
-            className={`wsdb-stat ${statusFilter === "合格" ? "active" : ""}`}
+            style={{ "--reveal-delay": "210ms" } as CSSProperties}
+            className={`reveal-up wsdb-stat ${statusFilter === "合格" ? "active" : ""}`}
             onClick={() => { setStatusFilter("合格"); setTodayOnly(false); setPage(1); }}
           >
             <div className="wsdb-stat-body">
