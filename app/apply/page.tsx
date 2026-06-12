@@ -1064,7 +1064,7 @@ function Step3({ applicationId, applicationNo, email, uploadedDocs, onUpload, on
 
 // ========== Step 4 ==========
 interface PaymentConfig {
-  bankName: string; accountType: string; accountNumber: string; accountHolder: string; deadline: string; bankInfoText?: string | null;
+  bankName: string; accountType: string; accountNumber: string; accountHolder: string; deadline: string; bankInfoText?: string | null; examFeeQr?: string | null;
 }
 
 function Step4Payment({ applicationId, applicationNo, email, schoolCount, feeStatus, onFeeStatusChange, schoolKey }: {
@@ -1183,6 +1183,14 @@ function Step4Payment({ applicationId, applicationNo, email, schoolCount, feeSta
           )
         ) : (
           <p className="text-sm text-gray-400">読み込み中...</p>
+        )}
+        {paymentConfig?.examFeeQr && (
+          <div className="mt-4 flex flex-col items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-xs font-bold text-gray-600">QRコードで支払う</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={paymentConfig.examFeeQr} alt="受験料お支払いQRコード" className="w-44 h-44 object-contain bg-white rounded-lg border border-gray-200 p-1" />
+            <p className="text-[11px] text-gray-400">決済アプリでスキャンしてお支払いください</p>
+          </div>
         )}
         <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
           振込名義は必ず<strong>出願者本人のお名前（カタカナ）</strong>でお振込みください。

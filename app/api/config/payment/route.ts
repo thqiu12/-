@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
   const schoolKey = searchParams.get("schoolKey");
 
   let bankInfoText: string | null = null;
+  // 全体共通の支払い設定（支払い設定ページ）：受験料・学費の振込先＋QR
+  let examFee: { bankInfo: string; qr: string | null } = { bankInfo: "", qr: null };
+  let tuition: { bankInfo: string; qr: string | null } = { bankInfo: "", qr: null };
   try {
     const cohorts = await prisma.cohort.findMany({
       where: schoolKey
@@ -18,6 +21,13 @@ export async function GET(request: NextRequest) {
     const specific = cohorts.find((c) => c.schoolKey === schoolKey && c.examFeeBankInfo);
     const global = cohorts.find((c) => !c.schoolKey && c.examFeeBankInfo);
     bankInfoText = (specific?.examFeeBankInfo || global?.examFeeBankInfo) ?? null;
+
+    const row = await prisma.systemSetting.findUnique({ where: { key: "payment_config" } });
+    if (row) {
+      const cfg = JSON.parse(row.value);
+      if (cfg?.examFee) examFee = { bankInfo: String(cfg.examFee.bankInfo || ""), qr: cfg.examFee.qr || null };
+      if (cfg?.tuition) tuition = { bankInfo: String(cfg.tuition.bankInfo || ""), qr: cfg.tuition.qr || null };
+    }
   } catch {
     /* DB未接続などのときは環境変数の既定値にフォールバック */
   }
@@ -28,6 +38,10 @@ export async function GET(request: NextRequest) {
     accountNumber: process.env.PAYMENT_ACCOUNT_NUMBER || "1234567",
     accountHolder: process.env.PAYMENT_ACCOUNT_HOLDER || "（ザ）ハバガクエン",
     deadline: process.env.PAYMENT_DEADLINE || "出願後7日以内",
-    bankInfoText, // 選考管理で設定された受験料振込先（あれば優先表示）
+    // 受験料の振込先テキスト：支払い設定 > 選考管理(#7) の順で優先
+    bankInfoText: examFee.bankInfo || bankInfoText,
+    examFeeQr: examFee.qr,        // 受験料のQR（data URI）
+    tuitionBankInfo: tuition.bankInfo || null, // 学費の振込先テキスト
+    tuitionQr: tuition.qr,        // 学費のQR（data URI）
   });
 }

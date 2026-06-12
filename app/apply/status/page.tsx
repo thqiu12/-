@@ -612,6 +612,15 @@ function StatusPageInner() {
   const [crSubmitting, setCrSubmitting] = useState(false);
   const [crError, setCrError] = useState<string | null>(null);
 
+  // 全体共通の支払い設定（学費の振込先・QR）。入学手続き STEP1 で表示。
+  const [payCfg, setPayCfg] = useState<{ tuitionBankInfo: string | null; tuitionQr: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/config/payment")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setPayCfg({ tuitionBankInfo: d.tuitionBankInfo ?? null, tuitionQr: d.tuitionQr ?? null }); })
+      .catch(() => {});
+  }, []);
+
   // URLパラメータから自動ロード
   const fetchStatus = useCallback(async (appNo: string, emailAddr: string) => {
     setAutoLoading(true);
@@ -1884,11 +1893,21 @@ function StatusPageInner() {
                           )}
                         </div>
                         <div className="p-4">
-                          {/* 振込先 */}
-                          {ep.tuitionBankInfo && (
+                          {/* 振込先（選考管理の個別設定 > 支払い設定の全体設定の順で優先。QRは全体設定） */}
+                          {(ep.tuitionBankInfo || payCfg?.tuitionBankInfo || payCfg?.tuitionQr) && (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                               <p className="text-xs font-bold text-blue-800 mb-1">振込先情報</p>
-                              <p className="text-xs text-blue-900 whitespace-pre-line font-mono leading-relaxed">{ep.tuitionBankInfo}</p>
+                              {(ep.tuitionBankInfo || payCfg?.tuitionBankInfo) && (
+                                <p className="text-xs text-blue-900 whitespace-pre-line font-mono leading-relaxed">{ep.tuitionBankInfo || payCfg?.tuitionBankInfo}</p>
+                              )}
+                              {payCfg?.tuitionQr && (
+                                <div className="mt-3 flex flex-col items-center gap-1.5 pt-3 border-t border-blue-200">
+                                  <p className="text-[11px] font-bold text-blue-700">QRコードで支払う</p>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={payCfg.tuitionQr} alt="学費お支払いQRコード" className="w-40 h-40 object-contain bg-white rounded-lg border border-blue-200 p-1" />
+                                  <p className="text-[10px] text-blue-400">決済アプリでスキャンしてお支払いください</p>
+                                </div>
+                              )}
                             </div>
                           )}
                           {/* 金額 */}
