@@ -1007,24 +1007,28 @@ function StatusPageInner() {
 
             {/* 検索フォーム（結果表示時は折りたたみ） */}
             {!result ? (
-              <>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-navy-800">出願状況の確認</h2>
-                  <p className="text-gray-500 mt-1 text-sm">
-                    申請番号と登録したメールアドレスで現在の審査状況をご確認いただけます。書類アップロードや選考料お支払いの続きもこちらから行えます。
+              <div className="max-w-md mx-auto reveal-up">
+                <div className="text-center mb-6">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-navy-800 text-white flex items-center justify-center mb-4 shadow-sm">
+                    <CompassMark className="w-7 h-7" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-navy-900 tracking-tight">出願状況の確認</h2>
+                  <p className="text-gray-500 mt-2 text-sm leading-relaxed">
+                    申請番号と登録メールアドレスで、審査状況の確認や、書類アップロード・選考料お支払いの続きができます。
                   </p>
                 </div>
-                <div className="card mb-6">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                   <form onSubmit={handleSearch} className="space-y-4">
                     <div>
                       <label className="form-label">申請番号<span className="form-required">*</span></label>
                       <input
                         type="text"
                         className="form-input font-mono"
-                        placeholder="APP-20240401-XXXX"
+                        placeholder="APP-2026-XXXX"
                         value={applicationNo}
                         onChange={(e) => setApplicationNo(e.target.value.toUpperCase())}
                       />
+                      <p className="form-helper">出願時にメールでお送りした番号です</p>
                     </div>
                     <div>
                       <label className="form-label">メールアドレス<span className="form-required">*</span></label>
@@ -1039,14 +1043,16 @@ function StatusPageInner() {
                     {error && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
                     )}
-                    <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
+                    <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 active:scale-[0.99]">
                       {loading ? (
                         <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>確認中...</>
-                      ) : "状況を確認する"}
+                      ) : (
+                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" /></svg>状況を確認する</>
+                      )}
                     </button>
                   </form>
                 </div>
-              </>
+              </div>
             ) : (
               /* 結果表示中：コンパクトなヘッダー */
               <div className="flex items-center justify-between mb-4 px-1">
@@ -2188,22 +2194,27 @@ function StatusPageInner() {
         )}
 
         {/* お問い合わせ */}
-        <div className="mt-8 text-center">
+        <div className="mt-10 text-center">
           <p className="text-gray-500 text-sm">
             ご不明な点がございましたら、入学相談室（平日9:00〜17:00）までお問い合わせください。
           </p>
-          <Link
-            href="/apply"
-            className="inline-block mt-4 text-navy-700 hover:text-navy-900 text-sm font-medium underline"
-          >
-            新規出願はこちら
-          </Link>
-          <Link
-            href="/student"
-            className="inline-block mt-2 text-green-700 hover:text-green-900 text-sm font-medium underline"
-          >
-            在籍学生の方はこちら（学生My Page）
-          </Link>
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+            <Link
+              href="/apply"
+              className="inline-flex items-center gap-1.5 text-navy-700 hover:text-navy-900 text-sm font-semibold transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
+              新規出願はこちら
+            </Link>
+            <span className="hidden sm:inline-block w-px h-4 bg-gray-300" aria-hidden />
+            <Link
+              href="/student"
+              className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 text-sm font-semibold transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M22 10 12 5 2 10l10 5 10-5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 12v5c3 1.5 9 1.5 12 0v-5" /></svg>
+              在籍学生の方はこちら（学生My Page）
+            </Link>
+          </div>
         </div>
           </>
         )}
