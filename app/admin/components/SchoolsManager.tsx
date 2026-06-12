@@ -315,7 +315,6 @@ export function SchoolsManager({ onUnauthorized }: { onUnauthorized?: () => void
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-semibold text-gray-600 text-xs">順序</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-gray-600 text-xs">アイコン</th>
                     <th className="text-left px-4 py-2.5 font-semibold text-gray-600 text-xs">学校名</th>
                     <th className="text-left px-4 py-2.5 font-semibold text-gray-600 text-xs">法人名</th>
                     <th className="text-left px-4 py-2.5 font-semibold text-gray-600 text-xs">schoolKey</th>
@@ -330,7 +329,6 @@ export function SchoolsManager({ onUnauthorized }: { onUnauthorized?: () => void
                       <td className="px-4 py-3 text-gray-500 text-center w-16">
                         {school.displayOrder}
                       </td>
-                      <td className="px-4 py-3 text-2xl w-16 text-center">{school.icon}</td>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-gray-800">{school.name}</p>
                       </td>
@@ -401,18 +399,6 @@ export function SchoolsManager({ onUnauthorized }: { onUnauthorized?: () => void
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-500 font-mono"
                   />
                   <p className="text-xs text-gray-400 mt-1">英数字・ハイフンのみ（変更不可推奨）</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    アイコン
-                  </label>
-                  <input
-                    type="text"
-                    value={form.icon}
-                    onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
-                    placeholder="🏫"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-500"
-                  />
                 </div>
               </div>
               <div>
