@@ -294,7 +294,8 @@ function buildNoticeHTML(data: AdmissionLetterData): string {
 </html>`;
 }
 
-export async function generateAdmissionPDF(data: AdmissionLetterData): Promise<Buffer> {
+// HTML → PDF（A4）。Chromium 起動を共通化。
+async function renderHtmlToPdf(html: string): Promise<Buffer> {
   const possiblePaths = [
     process.env.PUPPETEER_EXECUTABLE_PATH,
     "/usr/local/bin/chromium-browser",
@@ -323,17 +324,89 @@ export async function generateAdmissionPDF(data: AdmissionLetterData): Promise<B
 
   try {
     const page = await browser.newPage();
-    const html = buildNoticeHTML(data);
     await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
-
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
       margin: { top: "0", right: "0", bottom: "0", left: "0" },
     });
-
     return Buffer.from(pdfBuffer);
   } finally {
     await browser.close();
   }
+}
+
+export async function generateAdmissionPDF(data: AdmissionLetterData): Promise<Buffer> {
+  return renderHtmlToPdf(buildNoticeHTML(data));
+}
+
+// ===== 入学誓約書 =====
+export interface EnrollmentPledgeData {
+  applicationNo: string;
+  applicantName: string;
+  applicantNameKana: string;
+  nationality: string;
+  birthDate: string;
+  schoolName: string;
+  department: string;
+  course: string;
+  enrollmentYear: string;
+  enrollmentMonth: string;
+  signerName: string;
+  signedAt: string;        // 表示用にフォーマット済みの日付文字列
+  signatureDataUri: string; // canvas の DataURI（PNG）
+}
+
+function buildPledgeHTML(d: EnrollmentPledgeData): string {
+  const sc = getSchoolConfig(d.schoolName);
+  const e = escapeHtml;
+  return `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Hiragino Mincho ProN","Yu Mincho",serif; color:#1a1a1a; }
+  .page { width:210mm; min-height:297mm; padding:28mm 24mm; position:relative; }
+  h1 { text-align:center; font-size:26px; letter-spacing:.4em; margin-bottom:28px; font-weight:700; }
+  .addressee { font-size:15px; margin-bottom:18px; }
+  .body { font-size:14px; line-height:2.1; margin-bottom:22px; }
+  .info { border:1px solid #555; border-collapse:collapse; width:100%; font-size:13px; margin:18px 0 26px; }
+  .info th,.info td { border:1px solid #999; padding:8px 12px; text-align:left; }
+  .info th { background:#f3f4f6; width:32%; font-weight:600; }
+  .pledge-list { font-size:14px; line-height:2.0; margin:6px 0 26px; padding-left:1.2em; }
+  .pledge-list li { margin-bottom:6px; }
+  .sign-area { margin-top:30px; display:flex; justify-content:flex-end; }
+  .sign-box { width:60%; }
+  .sign-row { display:flex; align-items:flex-end; gap:12px; margin-bottom:10px; }
+  .sign-label { font-size:13px; color:#555; width:90px; }
+  .sign-val { font-size:15px; border-bottom:1px solid #333; flex:1; padding-bottom:4px; }
+  .sign-img { height:70px; max-width:240px; object-fit:contain; }
+  .date { text-align:right; font-size:13px; margin-bottom:18px; }
+</style></head>
+<body><div class="page">
+  <h1>入学誓約書</h1>
+  <p class="addressee">${e(sc.legalName)}　${e(sc.officialName)}　御中</p>
+  <p class="body">私は、貴校への入学を許可されたことを受け、下記の事項を誓約のうえ、正式に入学の手続きを行います。</p>
+  <table class="info">
+    <tr><th>出願番号</th><td>${e(d.applicationNo)}</td></tr>
+    <tr><th>氏名</th><td>${e(d.applicantName)}（${e(d.applicantNameKana)}）</td></tr>
+    <tr><th>国籍</th><td>${e(d.nationality)}</td></tr>
+    <tr><th>生年月日</th><td>${e(d.birthDate)}</td></tr>
+    <tr><th>入学</th><td>${e(d.enrollmentYear)}年${e(d.enrollmentMonth)}月　${e(d.department)}${d.course ? "（" + e(d.course) + "）" : ""}</td></tr>
+  </table>
+  <p class="body" style="margin-bottom:6px;">記</p>
+  <ol class="pledge-list">
+    <li>本校の学則および諸規程を遵守し、学生の本分を守ります。</li>
+    <li>所定の学費・諸納付金を期日までに納入します。</li>
+    <li>在留資格その他、就学に必要な法令上の手続きを適切に行います。</li>
+    <li>提出書類の記載内容に虚偽がないことを誓約します。</li>
+  </ol>
+  <p class="date">${e(d.signedAt)}　電子署名</p>
+  <div class="sign-area"><div class="sign-box">
+    <div class="sign-row"><span class="sign-label">署名者氏名</span><span class="sign-val">${e(d.signerName)}</span></div>
+    <div class="sign-row"><span class="sign-label">署名</span><span class="sign-val" style="border:0;"><img class="sign-img" src="${d.signatureDataUri}" alt="署名" /></span></div>
+  </div></div>
+</div></body></html>`;
+}
+
+export async function generateEnrollmentPledgePDF(data: EnrollmentPledgeData): Promise<Buffer> {
+  return renderHtmlToPdf(buildPledgeHTML(data));
 }

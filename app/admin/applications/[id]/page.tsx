@@ -2809,6 +2809,14 @@ export default function ApplicationDetailPage() {
                     className="w-full h-auto max-h-24 object-contain p-1"
                   />
                 </div>
+                <a
+                  href={`/api/documents/enrollment-pledge?applicationNo=${encodeURIComponent(application.applicationNo)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-900"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg>
+                  入学誓約書（PDF）を表示
+                </a>
               </div>
             ) : (
               <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">

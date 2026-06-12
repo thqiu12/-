@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUI } from "@/components/ui/toast";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { CompassMark } from "@/components/ui/CompassMark";
+import { isNoWrittenExamSchool } from "@/lib/examConfig";
 
 interface FormFieldConfig {
   fieldKey: string;
@@ -582,6 +583,8 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
     ? enrollmentYears
     : [String(currentYear), String(currentYear + 1), String(currentYear + 2)];
   const selectedSchool = schools.find(s => s.id === form.schoolId);
+  // 学校別の筆記ポリシー（TDBは筆記なし＝一般選考も筆記免除）
+  const noWrittenExam = isNoWrittenExamSchool({ schoolId: form.schoolId, schoolName: selectedSchool?.name });
 
   // 並願で選択済み学校ID一覧（メイン + 追加）
   const usedSchoolIds = [form.schoolId, ...form.additionalSchools.map(a => a.schoolId)].filter(Boolean);
@@ -756,7 +759,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
       <SectionTitle icon="tag">選考区分・推薦</SectionTitle>
       <div className="grid grid-cols-3 gap-3">
         {[
-          { value: "一般", label: "一般選考", desc: "筆記試験・面接あり", icon: "pencil" as IconName, exam: true },
+          { value: "一般", label: "一般選考", desc: noWrittenExam ? "面接のみ（筆記免除）" : "筆記試験・面接あり", icon: "pencil" as IconName, exam: !noWrittenExam },
           { value: "指定推薦", label: "指定推薦", desc: "筆記試験免除・面接のみ", icon: "handshake" as IconName, exam: false },
           { value: "特待生", label: "特待生選考", desc: "筆記試験免除・面接のみ", icon: "star" as IconName, exam: false },
         ].map(mode => {
@@ -811,6 +814,17 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
       )}
       {form.examMode === "一般" && (
         <>
+          {noWrittenExam ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <span className="shrink-0 w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center"><Icon name="ticket" className="w-5 h-5" /></span>
+                <div>
+                  <p className="font-bold text-green-800 text-sm mb-1">筆記試験はありません（面接のみ）</p>
+                  <p className="text-xs text-green-700">本校の一般選考は筆記試験を免除しています。書類審査通過後、面接を受けていただきます。日程は別途ご案内します。</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <span className="shrink-0 w-9 h-9 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center"><Icon name="pencil" className="w-5 h-5" /></span>
@@ -820,6 +834,7 @@ function Step2({ form, onChange, onChangeAdditional, onAddAdditional, onRemoveAd
               </div>
             </div>
           </div>
+          )}
           <Field label="紹介・推薦機関（任意）" hint="エージェントや紹介者がいる場合はご記入ください">
             <Input placeholder="例：知日留学センター（なければ空欄）" value={form.referrerName} onChange={e => onChange("referrerName", e.target.value)} />
           </Field>

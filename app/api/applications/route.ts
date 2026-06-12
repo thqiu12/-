@@ -6,6 +6,7 @@ import { checkRateLimit, getClientIp } from "@/lib/security";
 import { ApplicationCreateSchema } from "@/lib/schemas";
 import { ENV } from "@/lib/env";
 import { resolveSchoolFk } from "@/lib/school-fk";
+import { isNoWrittenExamSchool } from "@/lib/examConfig";
 
 // 学生へ出願番号確認メール送信
 async function sendStudentConfirmation(application: {
@@ -388,12 +389,14 @@ export async function POST(request: NextRequest) {
               enrollmentMonth: body.enrollmentMonth,
               applySchoolId: primary.applySchoolId,
               applyDepartmentId: primary.applyDepartmentId,
+              writtenExamExempted: isNoWrittenExamSchool({ schoolName: primary.schoolName || body.schoolName }),
             },
             ...additional.map((s, idx) => ({
               priority: idx + 2,
               schoolName: s.schoolName,
               department: s.department,
               course: s.course || null,
+              writtenExamExempted: isNoWrittenExamSchool({ schoolName: s.schoolName }),
               enrollmentYear: body.enrollmentYear,
               enrollmentMonth: body.enrollmentMonth,
               applySchoolId: s.applySchoolId,
