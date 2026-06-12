@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useUI } from "@/components/ui/toast";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
 
 interface Agent {
   id: string;
@@ -175,6 +176,8 @@ export default function AgentsPage() {
           新規追加
         </button>
       </div>
+
+      <AgentProspectTabs />
 
       <div>
         {/* 統計 */}

@@ -19,6 +19,8 @@ interface NavItem {
   label: string;
   icon: IconKey;
   external?: boolean;
+  /** href 以外にもアクティブ扱いにするパス接頭辞（統合ナビ用） */
+  match?: string[];
 }
 
 interface NavSection {
@@ -36,8 +38,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/admin/cohorts",       label: "選考管理",     icon: "clipboard" },
       { href: "/admin/announcements", label: "お知らせ",     icon: "megaphone" },
-      { href: "/admin/prospects",     label: "希望者リスト", icon: "edit" },
-      { href: "/admin/agents",        label: "エージェント", icon: "handshake" },
+      { href: "/admin/prospects",     label: "希望者",       icon: "edit", match: ["/admin/agents"] },
     ],
   },
   {
@@ -119,7 +120,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <div key={sec.label}>
               <div className="wsdb-nav-section">{sec.label}</div>
               {sec.items.map((it) => {
-                const active = !it.external && pathname.startsWith(it.href);
+                const active = !it.external && (
+                  pathname.startsWith(it.href) || (it.match?.some((m) => pathname.startsWith(m)) ?? false)
+                );
                 return (
                   <Link
                     key={it.href}

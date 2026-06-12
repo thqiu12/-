@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
 
 interface Prospect {
   id: string;
@@ -143,8 +144,10 @@ export default function AdminProspectsPage() {
         </div>
       </div>
 
+      <AgentProspectTabs />
+
       <div className="space-y-5">
-        {/* タブ */}
+        {/* 希望者リスト内サブタブ：全件 / 重複検出 */}
         <div className="flex border-b border-gray-200 gap-1">
           <button
             onClick={() => setActiveTab("all")}
