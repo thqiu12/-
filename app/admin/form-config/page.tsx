@@ -37,7 +37,7 @@ const FIELD_TYPE_LABELS: Record<string, string> = {
   file: "ファイル",
 };
 
-// School tabs: null = 全校共通（グローバル）
+// School tabs: null = 全校共通
 const SCHOOL_TABS: { id: string | null; name: string }[] = [
   { id: null, name: "全校共通" },
   ...SCHOOLS.map(s => ({ id: s.id, name: s.name })),
@@ -327,7 +327,7 @@ export default function FormConfigPage() {
             )}
             {!isGlobal && !loading && (
               <span className="text-xs text-gray-400">
-                （グローバルをベースに上書き）
+                （全校共通をベースに上書き）
               </span>
             )}
           </div>
@@ -343,18 +343,18 @@ export default function FormConfigPage() {
                 onClick={async () => {
                   const ok = await confirm({
                     title: "学校固有設定をリセット",
-                    message: `「${selectedSchoolId}」の学校固有設定をすべて削除してグローバル設定に戻しますか？`,
+                    message: `「${selectedSchoolName}」の学校固有設定をすべて削除して全校共通の設定に戻しますか？`,
                     danger: true,
                     okLabel: "リセット",
                   });
                   if (!ok) return;
                   const res = await fetch(`/api/admin/form-config?resetSchoolId=${encodeURIComponent(selectedSchoolId)}`, { method: "PATCH" });
-                  if (res.ok) { setSuccessMsg("グローバル設定に戻しました"); fetchConfigs(selectedSchoolId); }
+                  if (res.ok) { setSuccessMsg("全校共通の設定に戻しました"); fetchConfigs(selectedSchoolId); }
                   else setError("リセットに失敗しました");
                 }}
                 className="px-4 py-2 bg-orange-100 text-orange-700 border border-orange-200 text-sm font-semibold rounded-lg hover:bg-orange-200 transition flex items-center gap-1.5"
               >
-                グローバル設定に戻す
+                全校共通に戻す
               </button>
             )}
             <button

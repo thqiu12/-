@@ -241,7 +241,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// PATCH: 特定学校の全カスタム設定を削除（グローバルに戻す）
+// PATCH: 特定学校の全カスタム設定を削除（全校共通に戻す）
 export async function PATCH(request: NextRequest) {
   const session = await getSession(request);
   if (!(await hasCapability(session, "form.edit"))) {
