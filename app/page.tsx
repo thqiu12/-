@@ -255,9 +255,12 @@ export default function HomePage() {
                         </div>
                         <div className="mb-2"><Icon name={school.icon} className="w-8 h-8 text-white" /></div>
                         <p className="text-white/70 text-xs mb-0.5">{school.hojin}</p>
-                        <h3 className="text-white font-bold text-lg leading-snug">
-                          {school.name}
-                          {"nameShort" in school && <span className="text-white/60 text-sm ml-1">（{(school as typeof school & {nameShort: string}).nameShort}）</span>}
+                        {/* 校名は2行分の高さを確保し、色付きヘッダーの高さをカード間で揃える */}
+                        <h3 className="text-white font-bold text-lg leading-snug min-h-[3.25rem] flex items-start">
+                          <span>
+                            {school.name}
+                            {"nameShort" in school && <span className="text-white/60 text-sm ml-1">（{(school as typeof school & {nameShort: string}).nameShort}）</span>}
+                          </span>
                         </h3>
                       </div>
 
