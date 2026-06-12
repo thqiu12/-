@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { CompassMark } from "@/components/ui/CompassMark";
 
@@ -11,7 +11,7 @@ const SCHOOLS = [
     name: "中央ゼミナール",
     hojin: "学校法人 羽場学園",
     icon: "book" as const,
-    color: { header: "bg-blue-600", btn: "bg-blue-600 hover:bg-blue-700", tag: "bg-blue-50 text-blue-700 border-blue-100", badge: "bg-blue-100 text-blue-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
+    color: { header: "bg-gradient-to-br from-blue-500 to-blue-700", btn: "bg-blue-600 hover:bg-blue-700", tag: "bg-blue-50 text-blue-700 border-blue-100", badge: "bg-blue-100 text-blue-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "大学・大学院・美術系の受験指導に特化した専修学校。留学生向けの日本語指導から難関大学合格まで、個別カリキュラムで徹底サポートします。",
     departments: [
       { name: "大学・大学院受験科", duration: "1年制" },
@@ -24,7 +24,7 @@ const SCHOOLS = [
     nameShort: "TDB",
     hojin: "学校法人 羽場学園",
     icon: "monitor" as const,
-    color: { header: "bg-violet-600", btn: "bg-violet-600 hover:bg-violet-700", tag: "bg-violet-50 text-violet-700 border-violet-100", badge: "bg-violet-100 text-violet-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
+    color: { header: "bg-gradient-to-br from-violet-500 to-violet-700", btn: "bg-violet-600 hover:bg-violet-700", tag: "bg-violet-50 text-violet-700 border-violet-100", badge: "bg-violet-100 text-violet-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "デジタルビジネス・デジタルメディアの実践スキルを習得する専門学校。最新テクノロジーとビジネスを融合した教育で、デジタル社会を牽引する人材を育成します。",
     departments: [
       { name: "デジタルビジネス科", duration: "2年制" },
@@ -36,7 +36,7 @@ const SCHOOLS = [
     name: "神奈川柔整鍼灸専門学校",
     hojin: "学校法人 平井学園",
     icon: "stethoscope" as const,
-    color: { header: "bg-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700", tag: "bg-emerald-50 text-emerald-700 border-emerald-100", badge: "bg-emerald-100 text-emerald-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
+    color: { header: "bg-gradient-to-br from-emerald-500 to-emerald-700", btn: "bg-emerald-600 hover:bg-emerald-700", tag: "bg-emerald-50 text-emerald-700 border-emerald-100", badge: "bg-emerald-100 text-emerald-700", closed: "bg-gray-100 text-gray-400 cursor-not-allowed" },
     desc: "柔道整復師・鍼灸師の国家資格取得を目指す専門学校。豊富な臨床実習と国家試験対策で、医療・スポーツ分野で活躍できる人材を育成します。",
     departments: [
       { name: "柔道整復師科", duration: "3年制" },
@@ -200,24 +200,42 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <div className="bg-white border-b border-gray-100">
-          <div className="max-w-5xl mx-auto px-4 py-14 text-center">
-            <span className="inline-block text-xs font-semibold tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full mb-5">ONLINE APPLICATION</span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
-              入学願書<br className="sm:hidden" /> オンライン出願
-            </h1>
-            <p className="text-gray-500 text-base max-w-xl mx-auto leading-relaxed">
-              24時間いつでもオンラインで出願手続きができます。<br/>
-              必要書類をデジタルでご提出ください。
-            </p>
+        <section className="relative overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-[#2c5a82]">
+          <div aria-hidden className="pointer-events-none absolute -right-20 -top-16 text-white/[0.06] hidden md:block">
+            <CompassMark className="w-[24rem] h-[24rem]" />
           </div>
-        </div>
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_-10%,rgba(96,165,250,0.22),transparent_42%)]" />
+          <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-20 sm:pt-20 sm:pb-24">
+            <div className="max-w-2xl reveal-up">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider text-blue-100 bg-white/10 ring-1 ring-white/15 px-3 py-1 rounded-full mb-5 backdrop-blur-sm">
+                <CompassMark className="w-3.5 h-3.5" />
+                Compass オンライン出願
+              </span>
+              <h1 className="text-3xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
+                入学願書 オンライン出願
+              </h1>
+              <p className="text-blue-100/80 text-base sm:text-lg leading-relaxed max-w-xl mb-8">
+                24時間いつでもオンラインで出願手続きができます。必要書類もデジタルでご提出いただけます。
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <a href="#schools" className="inline-flex items-center gap-2 bg-white text-navy-900 font-bold text-sm px-5 py-3 rounded-xl shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98]">
+                  志望校を選んで出願
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </a>
+                <Link href="/apply/status" className="inline-flex items-center gap-2 text-blue-50 font-semibold text-sm px-5 py-3 rounded-xl ring-1 ring-white/25 hover:bg-white/10 transition active:scale-[0.98]">
+                  出願の続き・状況確認
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
 
           {/* 学校カード */}
-          <section>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">志望校を選んで出願する</h2>
+          <section id="schools" className="scroll-mt-24">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-1">志望校を選んで出願する</h2>
+            <p className="text-sm text-gray-500 mb-6">受付中の学校から、オンラインで願書を提出できます。</p>
 
             {/* 受付状況ロード中 */}
             {activeCohorts === null && (
@@ -232,12 +250,14 @@ export default function HomePage() {
 
             {activeCohorts !== null && (
               <div className="grid md:grid-cols-3 gap-5">
-                {SCHOOLS.map(school => {
+                {SCHOOLS.map((school, i) => {
                   const cohort = getSchoolCohort(school.id);
                   const accepting = cohort !== null;
 
                   return (
-                    <div key={school.id} className={`bg-white rounded-2xl border shadow-sm transition-shadow overflow-hidden flex flex-col ${accepting ? "border-gray-200 hover:shadow-md" : "border-gray-100 opacity-80"}`}>
+                    <div key={school.id}
+                      style={{ "--reveal-delay": `${i * 90}ms` } as CSSProperties}
+                      className={`reveal-up bg-white rounded-2xl border shadow-sm transition-all duration-200 overflow-hidden flex flex-col ${accepting ? "border-gray-200 hover:shadow-lg hover:-translate-y-1" : "border-gray-100 opacity-80"}`}>
                       {/* カラーヘッダー */}
                       <div className={`${school.color.header} px-5 py-5 relative`}>
                         {/* 受付状況バッジ */}
@@ -270,7 +290,10 @@ export default function HomePage() {
                         {/* 受付中の場合：選考情報バナー */}
                         {accepting && cohort && (
                           <div className="mb-4 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 text-xs text-green-800 space-y-1">
-                            <p className="font-bold text-green-700">📅 第{cohort.round}期選考 受付中</p>
+                            <p className="font-bold text-green-700 flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2" /><path strokeLinecap="round" d="M8 3v4M16 3v4M4 10h16" /></svg>
+                              第{cohort.round}期選考 受付中
+                            </p>
                             {cohort.acceptEnd && (
                               <p>出願締切：<span className="font-semibold">{new Date(cohort.acceptEnd).toLocaleDateString("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}まで</span></p>
                             )}
@@ -283,7 +306,10 @@ export default function HomePage() {
                         {/* 受付期間外の場合 */}
                         {!accepting && (
                           <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-500">
-                            <p className="font-semibold">⏸ 現在、出願受付期間外です</p>
+                            <p className="font-semibold flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M10 9v6M14 9v6" /></svg>
+                              現在、出願受付期間外です
+                            </p>
                             <p className="mt-0.5">次回の選考情報は各校にお問い合わせください</p>
                           </div>
                         )}
@@ -321,7 +347,7 @@ export default function HomePage() {
 
           {/* 出願の流れ */}
           <section>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">出願の流れ</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-5">出願の流れ</h2>
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
 
               {/* ステップフロー */}
@@ -427,7 +453,7 @@ export default function HomePage() {
       <footer className="bg-white border-t border-gray-100 py-6">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <p className="text-gray-400 text-xs">
-            © 2024 学校法人羽場学園 中央ゼミナール / 学校法人平井学園 神奈川柔整鍼灸専門学校
+© 2026 学校法人羽場学園 中央ゼミナール / 学校法人平井学園 神奈川柔整鍼灸専門学校
           </p>
         </div>
       </footer>
