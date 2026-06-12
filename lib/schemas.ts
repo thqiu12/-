@@ -193,6 +193,7 @@ export const ApplicationStatusEnum = z.enum([
   "書類待ち",
   "書類確認中",
   "面接待ち",
+  "結果待ち",
   "合格",
   "補欠合格",
   "不合格",

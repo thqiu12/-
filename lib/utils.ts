@@ -72,6 +72,7 @@ export function getStatusStyle(status: string): string {
     受付中: "bg-blue-100 text-blue-800",
     書類確認中: "bg-yellow-100 text-yellow-800",
     面接待ち: "bg-purple-100 text-purple-800",
+    結果待ち: "bg-indigo-100 text-indigo-800",
     合格: "bg-green-100 text-green-800",
     不合格: "bg-red-100 text-red-800",
     補欠合格: "bg-orange-100 text-orange-800",

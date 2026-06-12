@@ -143,6 +143,7 @@ function getProgressIndex(status: string, enrollmentStatus?: string): number {
     受付中: 0,
     書類確認中: 1,
     面接待ち: 2,
+    結果待ち: 2,
     合格: 3,
     補欠合格: 3,
     不合格: -1,

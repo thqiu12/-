@@ -8,7 +8,7 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/Icon";
 
-const STATUSES = ["all", "受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留"];
+const STATUSES = ["all", "受付中", "書類確認中", "面接待ち", "結果待ち", "合格", "補欠合格", "不合格", "保留"];
 const JAPANESE_LEVELS = ["all", "N1", "N2", "N3", "N4", "N5", "なし"];
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 

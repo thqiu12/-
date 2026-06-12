@@ -132,7 +132,8 @@ export async function PATCH(
             : null;
           const defaultChecklist = JSON.stringify([
             { name: "入学誓約書", required: true, done: false },
-            { name: "健康診断書", required: true, done: false },
+            { name: "経費支弁能力を証明する書類", required: true, done: false },
+            { name: "健康診断書", required: false, done: false },
             { name: "最終学歴証明書（原本）", required: true, done: false },
             { name: "パスポートコピー", required: true, done: false },
             { name: "在留カードコピー", required: false, done: false },

@@ -375,7 +375,7 @@ function InterviewFeedbackCard({ applicationId }: { applicationId: string }) {
 }
 // ===== 面接フィードバックコンポーネント END =====
 
-const STATUSES = ["受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留", "辞退"];
+const STATUSES = ["受付中", "書類確認中", "面接待ち", "結果待ち", "合格", "補欠合格", "不合格", "保留", "辞退"];
 
 interface Agent {
   id: string;

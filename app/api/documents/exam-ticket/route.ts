@@ -113,9 +113,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 写真: 最新の証明写真。優先順は 確認済 > 提出済 で、差し戻し済みは除外
+    // 写真: 最新の証明写真。優先順は 確認済 > 提出済 で、差し戻し済みは除外。
+    // docType の表記ゆれ（「証明写真」「証明写真（3×3cm）」等）に対応するため部分一致で判定。
     const photoDocs = app.documents.filter(
-      (d) => d.docType === "証明写真（3×3cm）" && d.status !== "差し戻し",
+      (d) => d.docType.includes("証明写真") && d.status !== "差し戻し",
     );
     const photoDoc =
       photoDocs.find((d) => d.status === "確認済") ?? photoDocs[0] ?? null;
