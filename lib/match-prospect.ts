@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
  *  2. lastName + firstName + birthDate 一致（メール変更時の保険）
  *  3. lastName + firstName のみ一致（最終手段。複数ヒット時はマッチ無し扱い）
  *
- * 既にマッチ済みの Prospect は除外。複数候補ヒット時は最古を採用（最初の渠道優先）。
+ * 既にマッチ済みの Prospect は除外。複数候補ヒット時は最古を採用（最初のエージェント優先）。
  */
 
 export interface MatchInput {
@@ -48,7 +48,7 @@ export async function matchProspect(input: MatchInput): Promise<MatchResult> {
     }
   }
 
-  // Step 2: 氏名 + 生年月日。複数の渠道がヒットした場合は曖昧なので
+  // Step 2: 氏名 + 生年月日。複数のエージェントがヒットした場合は曖昧なので
   // 自動採用せず admin の手動紐付けに委ねる（commission 誤付与防止）。
   if (input.birthDate) {
     const byNameBirth = await prisma.prospect.findMany({
@@ -123,7 +123,7 @@ export async function linkProspectToApplication(input: MatchInput): Promise<Matc
 }
 
 /**
- * 重複検知: 同じ学生（email or 氏名+誕生日）が複数の渠道から登録されているか調べる。
+ * 重複検知: 同じ学生（email or 氏名+誕生日）が複数のエージェントから登録されているか調べる。
  * 名前のアルファベット順でソートして返す。
  */
 export interface DuplicateGroup {

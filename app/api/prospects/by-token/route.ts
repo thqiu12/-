@@ -5,9 +5,9 @@ import { logError } from "@/lib/logger";
 /**
  * GET /api/prospects/by-token?token=xxx
  *
- * 渠道専用フォーム ( /prospects/new?token=xxx ) で
+ * エージェント専用フォーム ( /prospects/new?token=xxx ) で
  * 「自分が登録した希望者一覧」を表示するための公開エンドポイント。
- * トークンに紐づく渠道の希望者だけを返す。
+ * トークンに紐づくエージェントの希望者だけを返す。
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       select: { id: true, name: true, isActive: true },
     });
     if (!agent || !agent.isActive) {
-      return NextResponse.json({ error: "渠道が見つかりません" }, { status: 404 });
+      return NextResponse.json({ error: "エージェントが見つかりません" }, { status: 404 });
     }
 
     const prospects = await prisma.prospect.findMany({

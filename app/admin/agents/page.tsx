@@ -305,7 +305,7 @@ export default function AgentsPage() {
                       <button
                         onClick={() => handleGenerateToken(agent)}
                         className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                        title="渠道専用フォーム URL を発行"
+                        title="エージェント専用フォーム URL を発行"
                       >
                         URL 発行
                       </button>

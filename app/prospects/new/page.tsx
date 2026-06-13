@@ -36,7 +36,7 @@ const STATUS_BADGE: Record<string, string> = {
   "候補": "bg-blue-100 text-blue-700",
   "出願済": "bg-green-100 text-green-700",
   "辞退": "bg-gray-100 text-gray-600",
-  "重複（他渠道優先）": "bg-amber-100 text-amber-700",
+  "重複（他エージェント優先）": "bg-amber-100 text-amber-700",
   "無効": "bg-red-100 text-red-700",
 };
 
@@ -68,13 +68,13 @@ function ProspectNewInner() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // トークンから渠道情報を取得
+  // トークンからエージェント情報を取得
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const t = sp.get("token") || "";
     setToken(t);
     if (!t) {
-      setAuthError("渠道専用 URL が必要です。配布された URL からアクセスしてください。");
+      setAuthError("エージェント専用 URL が必要です。配布された URL からアクセスしてください。");
       setAuthLoading(false);
       return;
     }
@@ -82,7 +82,7 @@ function ProspectNewInner() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d || !d.id) {
-          setAuthError("URL が無効です。最新の渠道専用 URL を運営にお問い合わせください。");
+          setAuthError("URL が無効です。最新のエージェント専用 URL を運営にお問い合わせください。");
         } else {
           setAgent(d);
         }
@@ -189,7 +189,7 @@ function ProspectNewInner() {
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div>
             <h1 className="font-bold text-lg flex items-center gap-2"><Icon name="clipboard" className="w-5 h-5" /> 希望者リスト 登録</h1>
-            <p className="text-sm text-navy-200">渠道: <strong>{agent?.name}</strong></p>
+            <p className="text-sm text-navy-200">エージェント: <strong>{agent?.name}</strong></p>
           </div>
           <button
             onClick={() => setShowHistory((v) => !v)}
@@ -314,7 +314,7 @@ function ProspectNewInner() {
 
             <Section title="メモ">
               <label className="block">
-                <span className="text-xs text-gray-600 mb-1 block">渠道メモ（学生の特徴・補足）</span>
+                <span className="text-xs text-gray-600 mb-1 block">エージェントメモ（学生の特徴・補足）</span>
                 <textarea
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg resize-y min-h-[80px]"
                   value={agentNotes}
@@ -345,7 +345,7 @@ function ProspectNewInner() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          このフォームは渠道専用です。複数学生を連続で登録できます。<br />
+          このフォームはエージェント専用です。複数学生を連続で登録できます。<br />
           登録後、運営側で自動マッチングが行われます。
         </p>
       </main>

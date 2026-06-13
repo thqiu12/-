@@ -5,7 +5,7 @@ import { logError } from "@/lib/logger";
 
 /**
  * GET /api/prospects/duplicates
- * 複数の渠道から同じ学生が登録された重複を検出。
+ * 複数のエージェントから同じ学生が登録された重複を検出。
  * 名前のアルファベット順にソートされたグループを返す。
  */
 export async function GET(request: NextRequest) {

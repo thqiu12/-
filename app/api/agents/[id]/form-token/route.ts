@@ -6,7 +6,7 @@ import { logError } from "@/lib/logger";
 
 /**
  * POST /api/agents/:id/form-token
- * 渠道専用フォーム URL のトークンを (再) 発行する。
+ * エージェント専用フォーム URL のトークンを (再) 発行する。
  * - 既存トークンは上書き（古い URL は無効化）
  * - トークンは 32 byte の hex 文字列
  */

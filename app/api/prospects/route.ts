@@ -7,7 +7,7 @@ import { logError } from "@/lib/logger";
 
 /**
  * /api/prospects
- *  POST: 渠道（または admin）が希望者を登録
+ *  POST: エージェント（または admin）が希望者を登録
  *  GET : admin が一覧取得（フィルタ・ソート対応）
  */
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const agent = await prisma.agent.findUnique({ where: { id: agentId } });
     if (!agent || !agent.isActive) {
-      return NextResponse.json({ error: "渠道が見つかりません" }, { status: 404 });
+      return NextResponse.json({ error: "エージェントが見つかりません" }, { status: 404 });
     }
 
     // 認証: admin セッション OR formToken 一致のいずれか必須
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (!isAdminUser) {
       if (!agent.formToken || agent.formToken !== formToken) {
         return NextResponse.json(
-          { error: "アクセス権限がありません（渠道専用 URL から登録してください）" },
+          { error: "アクセス権限がありません（エージェント専用 URL から登録してください）" },
           { status: 403 },
         );
       }

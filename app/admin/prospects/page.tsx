@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
 import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
+import { SkeletonList } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Prospect {
   id: string;
@@ -52,7 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
   "候補": "bg-blue-100 text-blue-700",
   "出願済": "bg-green-100 text-green-700",
   "辞退": "bg-gray-100 text-gray-600",
-  "重複（他渠道優先）": "bg-amber-100 text-amber-700",
+  "重複（他エージェント優先）": "bg-amber-100 text-amber-700",
   "無効": "bg-red-100 text-red-700",
 };
 
@@ -116,7 +118,7 @@ export default function AdminProspectsPage() {
   const deleteProspect = async (p: Prospect) => {
     const ok = await confirm({
       title: "希望者を削除しますか？",
-      message: `${p.lastName} ${p.firstName} (渠道: ${p.agent.name}) を削除します。元に戻せません。`,
+      message: `${p.lastName} ${p.firstName} (エージェント: ${p.agent.name}) を削除します。元に戻せません。`,
       okLabel: "削除する",
       danger: true,
     });
@@ -135,7 +137,7 @@ export default function AdminProspectsPage() {
       <div className="wsdb-topbar">
         <div>
           <h1 className="wsdb-topbar-title">希望者リスト</h1>
-          <p className="wsdb-topbar-meta">渠道経由の出願候補者管理 + 重複検出</p>
+          <p className="wsdb-topbar-meta">エージェント経由の出願候補者管理 + 重複検出</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="wsdb-badge wsdb-badge-info">候補 {prospects.filter((p) => p.status === "候補").length}</span>
@@ -191,7 +193,7 @@ export default function AdminProspectsPage() {
                 </select>
               </div>
               <div>
-                <label className="form-label">渠道</label>
+                <label className="form-label">エージェント</label>
                 <select className="form-input" value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}>
                   <option value="">すべて</option>
                   {agentOptions.map(([id, name]) => (
@@ -202,17 +204,20 @@ export default function AdminProspectsPage() {
               <button onClick={fetchAll} className="btn-primary text-sm px-4">適用</button>
             </div>
 
-            <div className="card overflow-x-auto">
-              {loading ? (
-                <p className="text-center py-6 text-gray-500">読み込み中...</p>
-              ) : prospects.length === 0 ? (
-                <p className="text-center py-6 text-gray-400">該当する希望者はいません</p>
-              ) : (
+            {loading ? (
+              <SkeletonList rows={6} cols={6} />
+            ) : prospects.length === 0 ? (
+              <EmptyState
+                title="該当する希望者はいません"
+                description="フィルター条件を変えるか、エージェント経由で希望者が登録されるとここに表示されます。"
+              />
+            ) : (
+              <div className="card overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-600">
                     <tr>
                       <th className="text-left px-3 py-2">氏名 (A→Z)</th>
-                      <th className="text-left px-3 py-2">渠道</th>
+                      <th className="text-left px-3 py-2">エージェント</th>
                       <th className="text-left px-3 py-2">メール / 電話</th>
                       <th className="text-left px-3 py-2">志望校</th>
                       <th className="text-left px-3 py-2">ステータス</th>
@@ -273,8 +278,8 @@ export default function AdminProspectsPage() {
                     ))}
                   </tbody>
                 </table>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
 
@@ -282,7 +287,7 @@ export default function AdminProspectsPage() {
         {activeTab === "duplicates" && (
           <div className="card">
             <p className="text-xs text-gray-600 mb-4">
-              複数の渠道から同じ学生が登録されている可能性があります。名前のアルファベット順で表示。
+              複数のエージェントから同じ学生が登録されている可能性があります。名前のアルファベット順で表示。
             </p>
             {duplicates.length === 0 ? (
               <p className="text-center py-6 text-gray-400">重複は検出されませんでした</p>
@@ -308,7 +313,7 @@ export default function AdminProspectsPage() {
                       <table className="w-full text-xs">
                         <thead className="text-gray-500">
                           <tr>
-                            <th className="text-left py-1">渠道</th>
+                            <th className="text-left py-1">エージェント</th>
                             <th className="text-left py-1">登録日</th>
                             <th className="text-left py-1">メール</th>
                             <th className="text-left py-1">誕生日</th>
@@ -332,7 +337,7 @@ export default function AdminProspectsPage() {
                         </tbody>
                       </table>
                       <p className="text-[10px] text-gray-500 mt-2 italic">
-                        推奨：先に登録された渠道を「候補」のまま残し、後発を「重複（他渠道優先）」に変更してください。
+                        推奨：先に登録されたエージェントを「候補」のまま残し、後発を「重複（他エージェント優先）」に変更してください。
                       </p>
                     </div>
                   );

@@ -254,8 +254,8 @@ model Agent {
   contactEmail String?
   notes        String?
   isActive     Boolean       @default(true)
-  // 渠道専用フォームのアクセス用シークレットトークン (URL に embed)。
-  // 渠道専用 URL: /prospects/new?token=xxx で agent の入力代行不要。
+  // エージェント専用フォームのアクセス用シークレットトークン (URL に embed)。
+  // エージェント専用 URL: /prospects/new?token=xxx で agent の入力代行不要。
   formToken    String?       @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -263,12 +263,12 @@ model Agent {
   prospects    Prospect[]
 }
 
-// 希望者リスト (Prospect): 渠道が学生を出願システムへ送る前に登録する CRM 的データ。
+// 希望者リスト (Prospect): エージェントが学生を出願システムへ送る前に登録する CRM 的データ。
 // 学生が後で出願 → email or fullName+birthDate でマッチング → matchedApplicationId に紐付け。
 //
 // 用途:
-//  - 渠道が「来週 5 名出願予定」と事前申告
-//  - Admin は重複検知（複数渠道が同じ学生を登録）を一覧で確認
+//  - エージェントが「来週 5 名出願予定」と事前申告
+//  - Admin は重複検知（複数エージェントが同じ学生を登録）を一覧で確認
 //  - 出願時に agent を自動紐付け → 返佣計算の信頼性向上
 model Prospect {
   id              String   @id @default(cuid())
@@ -290,17 +290,17 @@ model Prospect {
   enrollmentMonth     String?  // 例: "4"
   expectedApplyDate   String?  // 出願予定日 YYYY-MM-DD
 
-  // ---- 渠道情報 ----
+  // ---- エージェント情報 ----
   agentId         String
   agent           Agent    @relation(fields: [agentId], references: [id])
-  agentNotes      String?  // 渠道からの自由メモ
+  agentNotes      String?  // エージェントからの自由メモ
   referredAt      DateTime @default(now())
 
   // ---- マッチング状態 ----
   matchedApplicationId String? @unique
   matchedAt            DateTime?
   matchedBy            String? // "auto" or admin displayName
-  status               String  @default("候補") // 候補 / 出願済 / 辞退 / 重複（他渠道優先） / 無効
+  status               String  @default("候補") // 候補 / 出願済 / 辞退 / 重複（他エージェント優先） / 無効
 
   // ---- Admin メタ ----
   adminMemo       String?

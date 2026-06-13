@@ -148,7 +148,7 @@ export const ChangeRequestReviewSchema = z.object({
 });
 
 /**
- * 希望者リスト (Prospect): 渠道から学生情報を事前申告する CRM 用フォーム。
+ * 希望者リスト (Prospect): エージェントから学生情報を事前申告する CRM 用フォーム。
  */
 export const ProspectCreateSchema = z.object({
   // 必須
@@ -169,12 +169,12 @@ export const ProspectCreateSchema = z.object({
   enrollmentMonth: optStr(5),
   expectedApplyDate: optStr(20),
   agentNotes: optStr(1000),
-  // 渠道用シークレットトークン（任意。あれば agentId と整合チェック）
+  // エージェント用シークレットトークン（任意。あれば agentId と整合チェック）
   formToken: optStr(80),
 });
 
 export const ProspectAdminPatchSchema = z.object({
-  status: z.enum(["候補", "出願済", "辞退", "重複（他渠道優先）", "無効"]).optional(),
+  status: z.enum(["候補", "出願済", "辞退", "重複（他エージェント優先）", "無効"]).optional(),
   adminMemo: optStr(1000),
   matchedApplicationId: optStr(40),
 });

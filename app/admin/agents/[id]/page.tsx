@@ -45,7 +45,7 @@ const STATUS_COLORS: Record<string, string> = {
   "候補": "bg-blue-100 text-blue-700",
   "出願済": "bg-green-100 text-green-700",
   "辞退": "bg-gray-100 text-gray-600",
-  "重複（他渠道優先）": "bg-amber-100 text-amber-700",
+  "重複（他エージェント優先）": "bg-amber-100 text-amber-700",
   "無効": "bg-red-100 text-red-700",
 };
 
@@ -128,7 +128,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
   const revokeToken = async () => {
     const ok = await confirm({
       title: "フォーム URL を無効化しますか？",
-      message: "渠道専用 URL が無効化されます。再度発行すれば復旧できます。",
+      message: "エージェント専用 URL が無効化されます。再度発行すれば復旧できます。",
       danger: true,
       okLabel: "無効化",
     });
@@ -173,14 +173,14 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
           <Link href="/admin/agents" className="text-muted hover:text-ink text-sm">一覧</Link>
           <div>
             <h1 className="wsdb-topbar-title">{agent.name}</h1>
-            <p className="wsdb-topbar-meta">渠道詳細・URL 発行・希望者一覧</p>
+            <p className="wsdb-topbar-meta">エージェント詳細・URL 発行・希望者一覧</p>
           </div>
           {!agent.isActive && <span className="wsdb-badge wsdb-badge-danger">無効</span>}
         </div>
       </div>
 
       <div className="space-y-5">
-        {/* 渠道情報サマリー */}
+        {/* エージェント情報サマリー */}
         <div className="card grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="text-xs text-gray-500 mb-1">基本情報</p>
@@ -215,7 +215,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 mb-1">渠道専用 URL</p>
+            <p className="text-xs text-gray-500 mb-1">エージェント専用 URL</p>
             {agent.formToken ? (
               <>
                 <p className="text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded mb-2">
@@ -262,7 +262,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
           {filtered.length === 0 ? (
             <p className="text-center py-10 text-gray-400 text-sm">
               {prospects.length === 0
-                ? "まだ希望者が登録されていません。URL を渠道に配布してください。"
+                ? "まだ希望者が登録されていません。URL をエージェントに配布してください。"
                 : "該当する希望者はいません"}
             </p>
           ) : (
