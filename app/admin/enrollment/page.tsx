@@ -86,6 +86,23 @@ function fmt(dt: string | null | undefined): string {
   return new Date(dt).toLocaleDateString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// ステップ達成マーク：色付きの丸チップ（テキストの ✓ / — より「デザインされた」見た目）
+function CheckMark({ tone = "green" }: { tone?: "green" | "purple" }) {
+  const c = tone === "purple" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700";
+  return (
+    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center ${c}`}>
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+    </span>
+  );
+}
+function DashMark({ faint = false }: { faint?: boolean }) {
+  return (
+    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center bg-gray-100 ${faint ? "text-gray-300" : "text-gray-400"}`}>
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 12h12" /></svg>
+    </span>
+  );
+}
+
 // ─── メインコンポーネント ─────────────────────────────────
 export default function EnrollmentManagementPage() {
   const router = useRouter();
@@ -257,7 +274,7 @@ export default function EnrollmentManagementPage() {
           <SkeletonList rows={6} cols={6} />
         ) : rows.length === 0 ? (
           <EmptyState
-            icon="📭"
+            icon={<Icon name="inbox" className="w-7 h-7" />}
             title="該当する学生がいません"
             description="フィルター条件を変更するか、合格者の入学手続きが開始されるまでお待ちください。"
           />
@@ -368,13 +385,13 @@ export default function EnrollmentManagementPage() {
                           {ep ? (
                             ep.tuitionPaid ? (
                               <div>
-                                <span className="text-green-600 text-lg">✓</span>
+                                <CheckMark />
                                 <p className="text-xs text-gray-400">{fmt(ep.tuitionPaidAt)}</p>
                               </div>
                             ) : (
-                              <span className="text-gray-300 text-lg">—</span>
+                              <DashMark />
                             )
-                          ) : <span className="text-gray-200 text-lg">—</span>}
+                          ) : <DashMark faint />}
                         </td>
 
                         {/* 書類 */}
@@ -382,24 +399,24 @@ export default function EnrollmentManagementPage() {
                           {ep ? (
                             ep.docSubmitted ? (
                               <div>
-                                <span className="text-green-600 text-lg">✓</span>
+                                <CheckMark />
                                 <p className="text-xs text-gray-400">{fmt(ep.docSubmittedAt)}</p>
                               </div>
                             ) : (
-                              <span className="text-gray-300 text-lg">—</span>
+                              <DashMark />
                             )
-                          ) : <span className="text-gray-200 text-lg">—</span>}
+                          ) : <DashMark faint />}
                         </td>
 
                         {/* 署名 */}
                         <td className="px-3 py-3 text-center">
                           {ep ? (
                             (ep.status === "STEP3完了" || ep.status === "完了") ? (
-                              <span className="text-green-600 text-lg">✓</span>
+                              <CheckMark />
                             ) : (
-                              <span className="text-gray-300 text-lg">—</span>
+                              <DashMark />
                             )
-                          ) : <span className="text-gray-200 text-lg">—</span>}
+                          ) : <DashMark faint />}
                         </td>
 
                         {/* 学校承認 */}
@@ -407,7 +424,7 @@ export default function EnrollmentManagementPage() {
                           {ep ? (
                             ep.schoolConfirmed ? (
                               <div>
-                                <span className="text-green-600 text-lg">✓</span>
+                                <CheckMark />
                                 <p className="text-xs text-gray-400">{fmt(ep.schoolConfirmedAt)}</p>
                               </div>
                             ) : isSuperAdmin && (ep.status === "STEP3完了" || ep.status === "完了") ? (
@@ -418,9 +435,9 @@ export default function EnrollmentManagementPage() {
                                 承認する
                               </button>
                             ) : (
-                              <span className="text-gray-300 text-lg">—</span>
+                              <DashMark />
                             )
-                          ) : <span className="text-gray-200 text-lg">—</span>}
+                          ) : <DashMark faint />}
                         </td>
 
                         {/* 許可書 */}
@@ -428,7 +445,7 @@ export default function EnrollmentManagementPage() {
                           {ep ? (
                             ep.admitLetterIssued ? (
                               <div>
-                                <span className="text-purple-600 text-lg">✓</span>
+                                <CheckMark tone="purple" />
                                 <p className="text-xs text-gray-400">{fmt(ep.admitLetterIssuedAt)}</p>
                               </div>
                             ) : isSuperAdmin && ep.schoolConfirmed ? (
@@ -439,9 +456,9 @@ export default function EnrollmentManagementPage() {
                                 発行記録
                               </button>
                             ) : (
-                              <span className="text-gray-300 text-lg">—</span>
+                              <DashMark />
                             )
-                          ) : <span className="text-gray-200 text-lg">—</span>}
+                          ) : <DashMark faint />}
                         </td>
 
                         {/* メモ */}

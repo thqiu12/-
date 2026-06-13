@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { Icon } from "@/components/ui/Icon";
 
 interface QuotaRow {
   id: string;
@@ -103,24 +104,32 @@ export default function QuotaPage() {
 
       <div className="space-y-6">
 
-        {/* サマリーカード */}
+        {/* サマリーカード（KPI） */}
         {!loading && (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-              <p className="text-xs text-gray-400 mb-1">総定員（{filterYear}年度）</p>
-              <p className="text-3xl font-bold text-navy-800">{totalQuota}<span className="text-base font-normal text-gray-500 ml-1">名</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div style={{ "--wsdb-accent": "#2563eb", cursor: "default" } as CSSProperties} className="wsdb-stat">
+              <div className="wsdb-stat-body">
+                <div className="wsdb-stat-label">総定員（{filterYear}年度）</div>
+                <div className="wsdb-stat-value">{totalQuota}<span className="text-base font-normal text-muted ml-1">名</span></div>
+                <div className="wsdb-stat-sub">募集枠の合計</div>
+              </div>
+              <div className="wsdb-stat-icon wsdb-stat-icon-blue"><Icon name="clipboard" className="w-6 h-6" /></div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-              <p className="text-xs text-gray-400 mb-1">合格確定</p>
-              <p className="text-3xl font-bold text-green-600">{totalAccepted}<span className="text-base font-normal text-gray-500 ml-1">名</span></p>
-              <p className="text-xs text-gray-400 mt-1">充足率 {totalQuota > 0 ? Math.round(totalAccepted/totalQuota*100) : 0}%</p>
+            <div style={{ "--wsdb-accent": "#059669", cursor: "default" } as CSSProperties} className="wsdb-stat">
+              <div className="wsdb-stat-body">
+                <div className="wsdb-stat-label">合格確定</div>
+                <div className="wsdb-stat-value">{totalAccepted}<span className="text-base font-normal text-muted ml-1">名</span></div>
+                <div className="wsdb-stat-sub">充足率 {totalQuota > 0 ? Math.round(totalAccepted/totalQuota*100) : 0}%</div>
+              </div>
+              <div className="wsdb-stat-icon wsdb-stat-icon-green"><Icon name="check" className="w-6 h-6" /></div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-              <p className="text-xs text-gray-400 mb-1">残定員</p>
-              <p className={`text-3xl font-bold ${totalRemaining <= 5 ? "text-red-600" : totalRemaining <= 10 ? "text-yellow-600" : "text-navy-800"}`}>
-                {totalRemaining}<span className="text-base font-normal text-gray-500 ml-1">名</span>
-              </p>
-              <p className="text-xs text-gray-400 mt-1">まだ募集可能</p>
+            <div style={{ "--wsdb-accent": totalRemaining <= 5 ? "#dc2626" : totalRemaining <= 10 ? "#d97706" : "#0f766e", cursor: "default" } as CSSProperties} className="wsdb-stat">
+              <div className="wsdb-stat-body">
+                <div className="wsdb-stat-label">残定員</div>
+                <div className="wsdb-stat-value">{totalRemaining}<span className="text-base font-normal text-muted ml-1">名</span></div>
+                <div className="wsdb-stat-sub">{totalRemaining <= 5 ? "残りわずか" : "まだ募集可能"}</div>
+              </div>
+              <div className={`wsdb-stat-icon ${totalRemaining <= 5 ? "wsdb-stat-icon-red" : totalRemaining <= 10 ? "wsdb-stat-icon-amber" : "wsdb-stat-icon-gray"}`}><Icon name="users" className="w-6 h-6" /></div>
             </div>
           </div>
         )}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useUI } from "@/components/ui/toast";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/Icon";
 import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
 
 interface Agent {
@@ -211,7 +212,7 @@ export default function AgentsPage() {
           </h2>
           {agents.length === 0 ? (
             <EmptyState
-              icon="🤝"
+              icon={<Icon name="handshake" className="w-7 h-7" />}
               title="エージェントがまだ登録されていません"
               description="紹介エージェントを追加すると、申請に紐付けて管理できます。"
               action={

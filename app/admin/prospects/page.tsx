@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { Icon } from "@/components/ui/Icon";
 import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -139,16 +140,47 @@ export default function AdminProspectsPage() {
           <h1 className="wsdb-topbar-title">希望者リスト</h1>
           <p className="wsdb-topbar-meta">エージェント経由の出願候補者管理 + 重複検出</p>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="wsdb-badge wsdb-badge-info">候補 {prospects.filter((p) => p.status === "候補").length}</span>
-          <span className="wsdb-badge wsdb-badge-ok">出願済 {prospects.filter((p) => p.status === "出願済").length}</span>
-          {duplicates.length > 0 && <span className="wsdb-badge wsdb-badge-warn">重複 {duplicates.length}</span>}
-        </div>
       </div>
 
       <AgentProspectTabs />
 
       <div className="space-y-5">
+        {/* KPI 集計カード */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div style={{ "--wsdb-accent": "#2563eb", cursor: "default" } as CSSProperties} className="wsdb-stat">
+            <div className="wsdb-stat-body">
+              <div className="wsdb-stat-label">候補</div>
+              <div className="wsdb-stat-value">{prospects.filter((p) => p.status === "候補").length}</div>
+              <div className="wsdb-stat-sub">アプローチ中</div>
+            </div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-blue"><Icon name="users" className="w-6 h-6" /></div>
+          </div>
+          <div style={{ "--wsdb-accent": "#059669", cursor: "default" } as CSSProperties} className="wsdb-stat">
+            <div className="wsdb-stat-body">
+              <div className="wsdb-stat-label">出願済</div>
+              <div className="wsdb-stat-value">{prospects.filter((p) => p.status === "出願済").length}</div>
+              <div className="wsdb-stat-sub">出願に進んだ</div>
+            </div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-green"><Icon name="send" className="w-6 h-6" /></div>
+          </div>
+          <div style={{ "--wsdb-accent": "#7c3aed", cursor: "default" } as CSSProperties} className="wsdb-stat">
+            <div className="wsdb-stat-body">
+              <div className="wsdb-stat-label">紐付け済</div>
+              <div className="wsdb-stat-value">{prospects.filter((p) => p.matchedApplicationId).length}</div>
+              <div className="wsdb-stat-sub">申請と照合済</div>
+            </div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-purple"><Icon name="check" className="w-6 h-6" /></div>
+          </div>
+          <div style={{ "--wsdb-accent": "#d97706", cursor: "default" } as CSSProperties} className="wsdb-stat">
+            <div className="wsdb-stat-body">
+              <div className="wsdb-stat-label">重複検出</div>
+              <div className="wsdb-stat-value">{duplicates.length}</div>
+              <div className="wsdb-stat-sub">要確認</div>
+            </div>
+            <div className="wsdb-stat-icon wsdb-stat-icon-amber"><Icon name="info" className="w-6 h-6" /></div>
+          </div>
+        </div>
+
         {/* 希望者リスト内サブタブ：全件 / 重複検出 */}
         <div className="flex border-b border-gray-200 gap-1">
           <button
@@ -212,30 +244,31 @@ export default function AdminProspectsPage() {
                 description="フィルター条件を変えるか、エージェント経由で希望者が登録されるとここに表示されます。"
               />
             ) : (
-              <div className="card overflow-x-auto">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-600">
+                  <thead className="bg-navy-800 text-white">
                     <tr>
-                      <th className="text-left px-3 py-2">氏名 (A→Z)</th>
-                      <th className="text-left px-3 py-2">エージェント</th>
-                      <th className="text-left px-3 py-2">メール / 電話</th>
-                      <th className="text-left px-3 py-2">志望校</th>
-                      <th className="text-left px-3 py-2">ステータス</th>
-                      <th className="text-left px-3 py-2">マッチ</th>
-                      <th className="text-left px-3 py-2"></th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">氏名 (A→Z)</th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">エージェント</th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">メール / 電話</th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">志望校</th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">ステータス</th>
+                      <th className="text-left px-3 py-3 font-semibold whitespace-nowrap text-xs">マッチ</th>
+                      <th className="px-3 py-3"></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-100">
                     {prospects.map((p) => (
-                      <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
-                        <td className="px-3 py-2">
-                          <p className="font-semibold">{p.lastName} {p.firstName}</p>
+                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-3">
+                          <p className="font-semibold text-gray-900">{p.lastName} {p.firstName}</p>
                           {p.lastNameKana && <p className="text-xs text-gray-500">{p.lastNameKana} {p.firstNameKana}</p>}
                           {p.birthDate && <p className="text-xs text-gray-400">{p.birthDate}</p>}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-3">
                           <p className="font-medium text-gray-700">{p.agent.name}</p>
-                          {p.agent.country && <p className="text-xs text-gray-400">{p.agent.country}</p>}
+                          {p.agent.country && <span className="inline-block text-[10px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 mt-1">{p.agent.country}</span>}
                         </td>
                         <td className="px-3 py-2 text-xs text-gray-700">
                           {p.email && <p className="break-all">{p.email}</p>}
@@ -278,6 +311,7 @@ export default function AdminProspectsPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>
