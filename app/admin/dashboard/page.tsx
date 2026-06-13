@@ -7,6 +7,7 @@ import { getStatusStyle, getJapaneseLevelStyle, formatDateTimeJP } from "@/lib/u
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/Icon";
+import { HelpTip } from "@/components/admin/HelpTip";
 
 const STATUSES = ["all", "受付中", "書類確認中", "面接待ち", "結果待ち", "合格", "補欠合格", "不合格", "保留"];
 const JAPANESE_LEVELS = ["all", "N1", "N2", "N3", "N4", "N5", "なし"];
@@ -265,7 +266,7 @@ export default function AdminDashboard() {
       {/* wsdb 風タイトル＋メタ */}
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">ダッシュボード</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">ダッシュボード<HelpTip text={"出願者の一覧です。上部のカードや検索・状態で絞り込めます。行をクリックすると申請詳細（基本情報・選考・書類・入学手続き）が開きます。"} /></h1>
           <p className="wsdb-topbar-meta">出願・選考・入学手続き 一覧</p>
         </div>
       </div>

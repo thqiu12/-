@@ -7,6 +7,7 @@ import { SCHOOLS } from "@/lib/formFieldDefaults";
 import { SchoolsManager } from "@/app/admin/components/SchoolsManager";
 import { PaymentSettingsPanel } from "@/app/admin/components/PaymentSettingsPanel";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Icon } from "@/components/ui/Icon";
 
@@ -307,7 +308,7 @@ export default function FormConfigPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">各種設定</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">各種設定<HelpTip text={"出願フォームの項目・志望校・全体設定（入学希望年など）・支払い設定をまとめて管理します。上のタブで切り替えてください。"} /></h1>
           <p className="wsdb-topbar-meta">出願フォーム・志望校・全体設定・支払い設定</p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTimeJP } from "@/lib/utils";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 
 type Role = "super_admin" | "admin" | "sales" | "interviewer";
 
@@ -169,7 +170,7 @@ export default function AccountsPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">アカウント管理</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">アカウント管理<HelpTip text={"管理画面にログインできるスタッフのアカウントを管理します。各ロールの権限は「権限設定」で調整できます。"} /></h1>
           <p className="wsdb-topbar-meta">スタッフ・面接官のアカウントと権限</p>
         </div>
         <button onClick={openCreate} className="btn-primary text-sm">＋ 新規アカウント</button>

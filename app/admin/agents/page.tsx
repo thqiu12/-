@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/Icon";
@@ -167,7 +168,7 @@ export default function AgentsPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">エージェント管理</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">エージェント管理<HelpTip text={"紹介元エージェントの管理です。「URL発行」で各エージェント専用の希望者登録フォームURLを発行・配布できます。"} /></h1>
           <p className="wsdb-topbar-meta">紹介元・中介機関の管理</p>
         </div>
         <button onClick={openCreate} className="btn-primary text-sm flex items-center gap-1.5">

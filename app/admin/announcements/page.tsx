@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTimeJP } from "@/lib/utils";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { useCapabilities } from "@/lib/useCapabilities";
 
 const STATUSES = ["受付中", "書類確認中", "面接待ち", "合格", "補欠合格", "不合格", "保留"];
@@ -229,7 +230,7 @@ export default function AnnouncementsPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">お知らせ・一括通知</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">お知らせ・一括通知<HelpTip text={"出願者向けのお知らせを作成し、条件で絞った対象へ一括でメール通知できます。"} /></h1>
           <p className="wsdb-topbar-meta">出願者・在校生への通知管理</p>
         </div>
       </div>

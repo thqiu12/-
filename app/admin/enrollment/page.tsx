@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -222,7 +223,7 @@ export default function EnrollmentManagementPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">入学手続き管理</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">入学手続き管理<HelpTip text={"合格者の入学手続きの進捗一覧です。上のステップで絞り込み、行をクリックで詳細へ。学費振込→書類提出→電子署名→学校承認→許可書発行の順に進みます。"} /></h1>
           <p className="wsdb-topbar-meta">合格者の手続き進捗一覧</p>
         </div>
       </div>

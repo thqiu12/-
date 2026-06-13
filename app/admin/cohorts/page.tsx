@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTimeJP } from "@/lib/utils";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 
 const COHORT_STATUSES = ["受付中", "選考中", "完了"];
 
@@ -273,7 +274,7 @@ export default function CohortsPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">選考管理</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">選考管理<HelpTip text={"募集回（バッチ）の管理です。出願受付〜選考〜合否のまとまりを設定します。受験料の振込先もここで指定できます。"} /></h1>
           <p className="wsdb-topbar-meta">入学選考バッチ・面接ラウンド管理</p>
         </div>
       </div>

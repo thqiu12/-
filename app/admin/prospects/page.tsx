@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { Icon } from "@/components/ui/Icon";
 import { AgentProspectTabs } from "@/components/admin/AgentProspectTabs";
 import { SkeletonList } from "@/components/ui/skeleton";
@@ -137,7 +138,7 @@ export default function AdminProspectsPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">希望者リスト</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">希望者リスト<HelpTip text={"エージェント経由で事前申告された出願見込み者です。ステータスで進捗を管理し、「重複検出」タブで複数エージェントからの重複登録を確認できます。"} /></h1>
           <p className="wsdb-topbar-meta">エージェント経由の出願候補者管理 + 重複検出</p>
         </div>
       </div>

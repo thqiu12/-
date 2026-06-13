@@ -4,6 +4,7 @@ import { useState, useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUI } from "@/components/ui/toast";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { Icon } from "@/components/ui/Icon";
 
 interface QuotaRow {
@@ -121,7 +122,7 @@ export default function QuotaPage() {
     <>
       <div className="wsdb-topbar">
         <div>
-          <h1 className="wsdb-topbar-title">定員管理</h1>
+          <h1 className="wsdb-topbar-title inline-flex items-center gap-2">定員管理<HelpTip text={"学校×学科×入学年度ごとの定員と充足状況です。合格者数は申請の合否（合格）から自動集計されます。年度は全体設定の「入学希望年」と連動します。"} /></h1>
           <p className="wsdb-topbar-meta">学校×学科×入学年度 別 留学生定員</p>
         </div>
       </div>
