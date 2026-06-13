@@ -15,36 +15,27 @@ export async function GET(request: NextRequest) {
       orderBy: [{ schoolName: "asc" }, { enrollmentYear: "desc" }, { department: "asc" }],
     });
 
-    // 合格者数 / 出願中数を FK で集計（schoolName 文字列に依存しない）
-    const acceptedByFk = await prisma.applicationSchool.groupBy({
-      by: ["applySchoolId", "applyDepartmentId", "enrollmentYear"],
-      where: { result: "合格", applySchoolId: { not: null }, applyDepartmentId: { not: null } },
+    // 合否は Application.status を真とし、(志望校名・学科・入学年度) の文字列で集計する。
+    // これらの文字列は出願フォーム（ApplySchool.name / departments[].name）と一致しており、
+    // 定員レコードも同じ文字列で保存される（FK/ApplyDepartment マスタに依存しない）。
+    const ACCEPTED = new Set(["合格"]);
+    const PENDING = new Set(["受付中", "書類待ち", "書類確認中", "面接待ち", "結果待ち", "補欠合格", "保留"]);
+
+    const grouped = await prisma.application.groupBy({
+      by: ["schoolName", "department", "enrollmentYear", "status"],
       _count: { id: true },
     });
-    const pendingByFk = await prisma.applicationSchool.groupBy({
-      by: ["applySchoolId", "applyDepartmentId", "enrollmentYear"],
-      where: {
-        applySchoolId: { not: null },
-        applyDepartmentId: { not: null },
-        OR: [{ result: null }, { result: "保留" }],
-      },
-      _count: { id: true },
-    });
-
-    const fkKey = (sid: string | null, did: string | null, year: string) =>
-      `${sid ?? ""}__${did ?? ""}__${year}`;
-
+    const key = (s: string, d: string, y: string) => `${s}__${d}__${y}`;
     const acceptedMap = new Map<string, number>();
-    for (const a of acceptedByFk) {
-      acceptedMap.set(fkKey(a.applySchoolId, a.applyDepartmentId, a.enrollmentYear), a._count.id);
-    }
     const pendingMap = new Map<string, number>();
-    for (const a of pendingByFk) {
-      pendingMap.set(fkKey(a.applySchoolId, a.applyDepartmentId, a.enrollmentYear), a._count.id);
+    for (const g of grouped) {
+      const k = key(g.schoolName, g.department, g.enrollmentYear);
+      if (ACCEPTED.has(g.status)) acceptedMap.set(k, (acceptedMap.get(k) ?? 0) + g._count.id);
+      else if (PENDING.has(g.status)) pendingMap.set(k, (pendingMap.get(k) ?? 0) + g._count.id);
     }
 
     const result = quotas.map((q) => {
-      const k = fkKey(q.applySchoolId, q.applyDepartmentId, q.enrollmentYear);
+      const k = key(q.schoolName, q.department, q.enrollmentYear);
       const accepted = acceptedMap.get(k) ?? 0;
       const pending = pendingMap.get(k) ?? 0;
       const remaining = q.quota - accepted;
@@ -54,8 +45,6 @@ export async function GET(request: NextRequest) {
         schoolName: q.schoolName,
         department: q.department,
         enrollmentYear: q.enrollmentYear,
-        applySchoolId: q.applySchoolId,
-        applyDepartmentId: q.applyDepartmentId,
         quota: q.quota,
         accepted,
         pending,
@@ -67,35 +56,23 @@ export async function GET(request: NextRequest) {
 
     // 定員未設定だが合格者がいる組み合わせを「定員=0」で追加表示
     const quotaSet = new Set(
-      quotas.map((q) => fkKey(q.applySchoolId, q.applyDepartmentId, q.enrollmentYear)),
+      quotas.map((q) => key(q.schoolName, q.department, q.enrollmentYear)),
     );
-    const orphanAccepted = acceptedByFk.filter(
-      (a) => !quotaSet.has(fkKey(a.applySchoolId, a.applyDepartmentId, a.enrollmentYear)),
-    );
-    if (orphanAccepted.length > 0) {
-      const labels = await prisma.applyDepartment.findMany({
-        where: { id: { in: orphanAccepted.map((a) => a.applyDepartmentId!).filter(Boolean) } },
-        include: { applySchool: { select: { name: true } } },
+    for (const [k, accepted] of acceptedMap) {
+      if (quotaSet.has(k)) continue;
+      const [schoolName, department, enrollmentYear] = k.split("__");
+      result.push({
+        id: `unset-${k}`,
+        schoolName,
+        department,
+        enrollmentYear,
+        quota: 0,
+        accepted,
+        pending: pendingMap.get(k) ?? 0,
+        remaining: -1,
+        fillRate: -1,
+        memo: null,
       });
-      const labelMap = new Map(labels.map((d) => [d.id, { school: d.applySchool.name, dept: d.name }]));
-      for (const a of orphanAccepted) {
-        const lbl = labelMap.get(a.applyDepartmentId!) ?? { school: "(不明)", dept: "(不明)" };
-        const k = fkKey(a.applySchoolId, a.applyDepartmentId, a.enrollmentYear);
-        result.push({
-          id: `unset-${k}`,
-          schoolName: lbl.school,
-          department: lbl.dept,
-          enrollmentYear: a.enrollmentYear,
-          applySchoolId: a.applySchoolId,
-          applyDepartmentId: a.applyDepartmentId,
-          quota: 0,
-          accepted: a._count.id,
-          pending: pendingMap.get(k) ?? 0,
-          remaining: -1,
-          fillRate: -1,
-          memo: null,
-        });
-      }
     }
 
     return NextResponse.json(result);

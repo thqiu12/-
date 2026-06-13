@@ -19,12 +19,6 @@ interface QuotaRow {
   memo: string | null;
 }
 
-const SCHOOLS = ["中央ゼミナール", "神奈川柔整鍼灸専門学校"];
-const DEPARTMENTS: Record<string, string[]> = {
-  "中央ゼミナール": ["文科進学科", "理科進学科", "美術進学科", "日本語科", "体育進学科", "音楽進学科"],
-  "神奈川柔整鍼灸専門学校": ["鍼灸科", "柔道整復科"],
-};
-
 export default function QuotaPage() {
   const router = useRouter();
   const { confirm } = useUI();
@@ -36,11 +30,16 @@ export default function QuotaPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   // form
-  const [fSchool, setFSchool] = useState("中央ゼミナール");
-  const [fDept, setFDept] = useState("文科進学科");
+  const [fSchool, setFSchool] = useState("");
+  const [fDept, setFDept] = useState("");
   const [fYear, setFYear] = useState("2027");
   const [fQuota, setFQuota] = useState("");
   const [fMemo, setFMemo] = useState("");
+
+  // 志望校・学科は出願フォームと同じ正規データから取得（TDB含む・常に最新）
+  const [schoolOpts, setSchoolOpts] = useState<{ name: string; depts: string[] }[]>([]);
+  const SCHOOLS = schoolOpts.map((s) => s.name);
+  const deptsOf = (name: string) => schoolOpts.find((s) => s.name === name)?.depts ?? [];
 
   const fetchData = async () => {
     setLoading(true);
@@ -52,6 +51,15 @@ export default function QuotaPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    fetch("/api/apply/schools")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: { name: string; departments?: { name: string }[] }[]) => {
+        if (Array.isArray(data)) setSchoolOpts(data.map((s) => ({ name: s.name, depts: (s.departments || []).map((d) => d.name) })));
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = rows.filter(r => !filterYear || r.enrollmentYear === filterYear);
 
@@ -147,7 +155,7 @@ export default function QuotaPage() {
               ))}
             </div>
           </div>
-          <button onClick={() => { setFSchool("中央ゼミナール"); setFDept("文科進学科"); setFYear(filterYear || "2027"); setFQuota(""); setFMemo(""); setFormError(null); setShowModal(true); }}
+          <button onClick={() => { const s0 = schoolOpts[0]; setFSchool(s0?.name || ""); setFDept(s0?.depts[0] || ""); setFYear(filterYear || "2027"); setFQuota(""); setFMemo(""); setFormError(null); setShowModal(true); }}
             className="btn-primary flex items-center gap-2 text-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
             定員を設定
@@ -261,14 +269,14 @@ export default function QuotaPage() {
               {formError && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{formError}</div>}
               <div>
                 <label className="form-label">学校 <span className="form-required">*</span></label>
-                <select className="form-input" value={fSchool} onChange={e => { setFSchool(e.target.value); setFDept(DEPARTMENTS[e.target.value]?.[0] || ""); }}>
+                <select className="form-input" value={fSchool} onChange={e => { setFSchool(e.target.value); setFDept(deptsOf(e.target.value)[0] || ""); }}>
                   {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">学科 <span className="form-required">*</span></label>
                 <select className="form-input" value={fDept} onChange={e => setFDept(e.target.value)}>
-                  {(DEPARTMENTS[fSchool] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                  {deptsOf(fSchool).map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
