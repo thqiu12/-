@@ -296,7 +296,7 @@ export default function EnrollmentManagementPage() {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900">{row.lastName} {row.firstName}</p>
+                          <Link href={`/admin/applications/${row.id}`} className="block font-semibold text-gray-900 hover:text-navy-700 hover:underline">{row.lastName} {row.firstName}</Link>
                           {row.status === "補欠合格" && (
                             <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-semibold">補欠</span>
                           )}
@@ -362,7 +362,7 @@ export default function EnrollmentManagementPage() {
 
                         {/* 氏名 */}
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <p className="font-semibold text-gray-900">{row.lastName} {row.firstName}</p>
+                          <Link href={`/admin/applications/${row.id}`} className="block font-semibold text-gray-900 hover:text-navy-700 hover:underline">{row.lastName} {row.firstName}</Link>
                           <p className="text-xs text-gray-400">{row.lastNameKana} {row.firstNameKana}</p>
                         </td>
 
