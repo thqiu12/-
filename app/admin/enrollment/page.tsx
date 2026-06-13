@@ -128,6 +128,13 @@ export default function EnrollmentManagementPage() {
   // ステップカウント
   const [counts, setCounts] = useState<Record<string, number>>({});
 
+  // ダッシュボード等からの ?step= で初期フィルタを設定
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("step");
+    const valid = ["not_started", "step1", "step2", "step3", "schoolConfirm", "admitLetter"];
+    if (s && valid.includes(s)) setStepFilter(s);
+  }, []);
+
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {

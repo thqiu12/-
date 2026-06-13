@@ -454,26 +454,26 @@ export default function AdminDashboard() {
                 <Link href="/admin/enrollment" className="text-xs text-navy-600 hover:underline font-medium">管理画面 →</Link>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
+                <Link href="/admin/enrollment" className="block bg-sky-50 border border-sky-200 rounded-lg p-3 text-center transition hover:border-sky-400 hover:shadow-sm">
                   <p className="text-xs text-sky-600 mb-1">手続き案内済み</p>
                   <p className="text-xl font-bold text-sky-800">{es.announced}件</p>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                </Link>
+                <Link href="/admin/enrollment?step=step1" className="block bg-blue-50 border border-blue-200 rounded-lg p-3 text-center transition hover:border-blue-400 hover:shadow-sm">
                   <p className="text-xs text-blue-600 mb-1">学費振込待ち</p>
                   <p className="text-xl font-bold text-blue-800">{es.step1Waiting}件</p>
-                </div>
-                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
+                </Link>
+                <Link href="/admin/enrollment?step=step2" className="block bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center transition hover:border-cyan-400 hover:shadow-sm">
                   <p className="text-xs text-cyan-600 mb-1">書類提出待ち</p>
                   <p className="text-xl font-bold text-cyan-800">{es.step2Waiting}件</p>
-                </div>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+                </Link>
+                <Link href="/admin/enrollment?step=schoolConfirm" className="block bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center transition hover:border-indigo-400 hover:shadow-sm">
                   <p className="text-xs text-indigo-600 mb-1">学校承認待ち</p>
                   <p className="text-xl font-bold text-indigo-800">{es.schoolConfirmWaiting}件</p>
-                </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                </Link>
+                <Link href="/admin/enrollment?step=admitLetter" className="block bg-purple-50 border border-purple-200 rounded-lg p-3 text-center transition hover:border-purple-400 hover:shadow-sm">
                   <p className="text-xs text-purple-600 mb-1">許可書発行済み</p>
                   <p className="text-xl font-bold text-purple-800">{es.admitLetterIssued}件</p>
-                </div>
+                </Link>
               </div>
             </div>
           );
