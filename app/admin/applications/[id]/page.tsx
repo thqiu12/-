@@ -1675,10 +1675,8 @@ export default function ApplicationDetailPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* 左カラム: 申請情報 */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* 申請者情報サマリー */}
-            <div className="card bg-navy-800 text-white">
+          {/* 申請者情報サマリー（全幅ヘッダー） */}
+          <div className="card bg-navy-800 text-white lg:col-span-3">
               <div className="flex items-start justify-between mb-4 gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 rounded-full bg-white/10 ring-1 ring-white/20 flex items-center justify-center text-lg font-bold shrink-0">
@@ -1718,8 +1716,10 @@ export default function ApplicationDetailPage() {
                   <p className="font-medium">{application.enrollmentYear}年{application.enrollmentMonth}月</p>
                 </div>
               </div>
-            </div>
+          </div>
 
+          {/* 左カラム: 申請情報 */}
+          <div className={`space-y-4 ${activeTab === "enrollment" ? "lg:col-span-3" : "lg:col-span-2"}`}>
             {/* 個人情報 - 基本情報タブ */}
             <div style={{display: activeTab==="basic" ? undefined : "none"}}>
             <Section title="個人情報">
