@@ -968,7 +968,7 @@ function GeneralSettingsPanel() {
         <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
           <li>このページの設定は変更後すぐに出願フォームに反映されます（ブラウザの再読み込みが必要）。</li>
           <li>過去年度を残しておくと、過年度の問い合わせや再申請対応がしやすくなります。</li>
-          <li>定員管理（/admin/cohorts）の入学年度とは独立した設定です。両方を揃えるとフォーム選択肢と定員割当が整合します。</li>
+          <li>定員管理の年度フィルタはこの「入学希望年」と連動します（過去のデータがある年度はリストに残ります）。</li>
         </ul>
       </section>
     </div>

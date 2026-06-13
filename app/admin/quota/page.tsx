@@ -25,6 +25,8 @@ export default function QuotaPage() {
   const [rows, setRows] = useState<QuotaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterYear, setFilterYear] = useState("2027");
+  // 全体設定（入学希望年）と連動する年度リスト
+  const [cfgYears, setCfgYears] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -57,6 +59,19 @@ export default function QuotaPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: { name: string; departments?: { name: string }[] }[]) => {
         if (Array.isArray(data)) setSchoolOpts(data.map((s) => ({ name: s.name, depts: (s.departments || []).map((d) => d.name) })));
+      })
+      .catch(() => {});
+  }, []);
+
+  // 全体設定の入学希望年と連動（既定の年度フィルタもここに合わせる）
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.enrollmentYears) && d.enrollmentYears.length) {
+          setCfgYears(d.enrollmentYears);
+          setFilterYear(d.enrollmentYears[0]);
+        }
       })
       .catch(() => {});
   }, []);
@@ -99,7 +114,8 @@ export default function QuotaPage() {
     fetchData();
   };
 
-  const years = ["2026", "2027", "2028"];
+  // 年度ピル＝全体設定の年度 ∪ 既にデータがある年度（過去年度も消さずに残す）
+  const years = Array.from(new Set([...cfgYears, ...rows.map((r) => r.enrollmentYear)])).sort();
 
   return (
     <>
@@ -282,7 +298,7 @@ export default function QuotaPage() {
               <div>
                 <label className="form-label">入学年度 <span className="form-required">*</span></label>
                 <select className="form-input" value={fYear} onChange={e => setFYear(e.target.value)}>
-                  {["2026","2027","2028","2029"].map(y => <option key={y} value={y}>{y}年度</option>)}
+                  {(cfgYears.length ? cfgYears : ["2026","2027","2028","2029"]).map(y => <option key={y} value={y}>{y}年度</option>)}
                 </select>
               </div>
               <div>
